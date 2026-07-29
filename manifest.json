@@ -1,0 +1,16 @@
+{
+  "name": "DarkEndymion",
+  "version": "1.0.0",
+  "source": "Authorized files supplied by the user and their collaborator",
+  "files": {
+    "m.js": {
+      "sha256": "EC20CA476004AD594D8BA0D8FA207037C827AAEF8EEAF740063AADC2AE53F18B"
+    },
+    "v.js": {
+      "sha256": "583DC539B0A5E4AADE82343F11E47A8914CD31047EA1D838BA8CE0ACC97379D7"
+    },
+    "index.html": {
+      "sha256": "A70A609CD3983712A291241979426E278F7367B26727941F86F91F3AF74EC967"
+    }
+  }
+}
