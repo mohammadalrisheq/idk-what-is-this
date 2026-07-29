@@ -178,7 +178,7 @@
     MXSkin_noAcc: "Account does not exist.",
   };
   const _0x170eeb = {
-    title: "Drag+",
+    title: "Endymion",
   };
   const _0x342cb5 = {
     enterChatMsg: "Enter chat message...",
@@ -541,7 +541,7 @@
     static ["saveSettings"](_0x2dee0e, _0x1ffdc3) {
       this[_0x2dee0e] = _0x1ffdc3;
       if ("multiboxMode" === _0x2dee0e) {
-        _0x40f48a.alert("Drag+", "Please rejoin the server!");
+        _0x40f48a.alert("Endymion", "Please rejoin the server!");
       }
       if ("chatType" === _0x2dee0e) {
         this.toggleChatroom();
@@ -740,7 +740,7 @@
     static ["setNick"](_0x27d7eb) {
       if (_0x90a1a7.isAlive) {
         _0x14f7b2("#nick").val(_0x90a1a7.nick);
-        _0x40f48a.alert("Drag+", _0x59f59a.current.notif.nickChangeInGame);
+        _0x40f48a.alert("Endymion", _0x59f59a.current.notif.nickChangeInGame);
       }
       let _0x235246 = _0x19d5af.get("profiles", "profile" + this.selected);
       const _0x1170bc = {
@@ -1587,7 +1587,7 @@
           this.restartTimes[_0x1f6a53] = _0x2c8f61 ? Date.parse(_0x2c8f61) : null;
         });
       } catch (_0x4d7dc1) {
-        _0x40f48a.warn("Drag+", "Unexpected error occured while parsing servers info.");
+        _0x40f48a.warn("Endymion", "Unexpected error occured while parsing servers info.");
         throw _0x4d7dc1;
       }
       return [_0x5171cd, _0x53f748];
@@ -3823,7 +3823,7 @@
       // whose code was literally "XXXXXXX" (i.e. no skin), with no warning.
       return "XXXXXXX" !== _0x5518a5
         ? (this.isRGB !== _0x356638 && ((this.isRGB = _0x356638), _0x2d5cce.rgbMode()), (this._skin = _0x5518a5), void _0x2d5cce.skin())
-        : void _0x40f48a.alert("Drag+", _0x59f59a.current.notif.invalidSkinUrl);
+        : void _0x40f48a.alert("Endymion", _0x59f59a.current.notif.invalidSkinUrl);
     }
     static get ["skin"]() {
       return this._skin;
@@ -4812,7 +4812,7 @@
       });
       if (_0x53b303) {
         if (_0x53b303.isUnnamed) {
-          _0x40f48a.alert("Drag+", _0x59f59a.current.notif.target_unnamed);
+          _0x40f48a.alert("Endymion", _0x59f59a.current.notif.target_unnamed);
         } else {
           const _0x345b88 = this[1 === _0x42a1a4 ? "target1" : "target2"];
           _0x345b88.turnedOn = true;
@@ -5001,7 +5001,7 @@
     static async ["_getToken"](_0xe90589) {
       return new Promise((_0x2d5600, _0x1ab686) => {
         if (_0xe90589 <= 1) {
-          _0x40f48a.warn("Drag+", "Solving captcha, please wait..");
+          _0x40f48a.warn("Endymion", "Solving captcha, please wait..");
         }
         if (!window.turnstile) {
           return _0x1ab686(new Error("Turnstile SDK not loaded"));
@@ -5039,12 +5039,12 @@
           callback: (_0x4a58da, _0x51a9e5) => {
             const _0x3c9d02 = this.pendingResolvers[_0xe90589];
             if (!_0x51a9e5 && !_0x4a58da) {
-              return _0x40f48a.warn("Drag+", "Unexpected response from turnstile API.");
+              return _0x40f48a.warn("Endymion", "Unexpected response from turnstile API.");
             }
             if (_0x14f7b2("#loading-screen") && _0x14f7b2("#loading-screen").fadeOut(500)) {
               _0x14f7b2("#loading-screen").remove();
             }
-            _0x40f48a.warn("Drag+", "Captcha has been solved successfully for Tab " + _0xe90589);
+            _0x40f48a.warn("Endymion", "Captcha has been solved successfully for Tab " + _0xe90589);
             if (_0x3c9d02) {
               delete this.pendingResolvers[_0xe90589];
               return _0x3c9d02.resolve(_0x4a58da);
@@ -5070,7 +5070,7 @@
     }
     static ["connect"](_0x23e168, _0x5ad969) {
       if ("string" != typeof _0x23e168) {
-        return _0x40f48a.warn("Drag+", "Server IP is invalid");
+        return _0x40f48a.warn("Endymion", "Server IP is invalid");
       }
       if (_0x23e168) {
         this.disconnect();
@@ -5135,7 +5135,7 @@
       this.bindSocket(_0x210b36, _0x1903d8);
       _0x302a2c.initPingLoop(_0x1903d8);
       _0x90a1a7.type = _0x1903d8;
-      _0x40f48a.alert("Drag+", "Standby Tab 3 promoted into Tab " + _0x1903d8);
+      _0x40f48a.alert("Endymion", "Standby Tab 3 promoted into Tab " + _0x1903d8);
       setTimeout(() => _0x302a2c.spawnTab(_0x1903d8), 150);
       this.scheduleBackup(1200);
       return true;
@@ -5190,7 +5190,7 @@
       _0x2d5cce.ip();
       if (1 === _0x310b30) _0x1d0165.init();
       _0x302a2c.init(_0x310b30);
-      if (3 !== _0x310b30) _0x40f48a.alert("Drag+", "Tab " + _0x310b30 + " connected");
+      if (3 !== _0x310b30) _0x40f48a.alert("Endymion", "Tab " + _0x310b30 + " connected");
     }
     static ["onMessage"](_0xdbc368, _0x57208b) {
       this.packetCount["in"]++;
@@ -5222,7 +5222,7 @@
         this.connected2 = false;
       }
       _0x245b10.clearCells(_0x1903d8);
-      _0x40f48a.alert("Drag+", "Tab " + _0x1903d8 + " disconnected");
+      _0x40f48a.alert("Endymion", "Tab " + _0x1903d8 + " disconnected");
       console.log("Websocket " + _0x1903d8 + " closed");
       if (this.promoteBackup(_0x1903d8)) return;
       setTimeout(() => {
@@ -5269,7 +5269,7 @@
         const _0x80533c = this.messages.get(_0x2071d8);
         if ((_0x80533c == _0x1a8ffb && _0x1a8ffb.length >= 30) || (_0x80533c.length >= 30 && _0x1a8ffb.length >= 30)) {
           this.spammers.push(_0x2071d8);
-          _0x40f48a.alert("Drag+", "Spammer Catched -> " + _0x2071d8);
+          _0x40f48a.alert("Endymion", "Spammer Catched -> " + _0x2071d8);
           return true;
         }
       } else if (_0x1a8ffb.length >= 30) {
@@ -5355,7 +5355,7 @@
         const _0x6d7e8f = _0x9c2d4e.readInt32();
         const _0x1f2a3b = _0x9c2d4e.readInt32();
         _0x6f2e1a.push({ id: _0x4e5f6a, nick: _0x8b9c1d, mass: _0x3a4b5c, x: _0x6d7e8f, y: _0x1f2a3b });
-        if (_0x8b9c1d === _0x90a1a7.nick) {
+        if (_0x8b9c1d === _0x90a1a7.nick || _0x8b9c1d === _0x90a1a7.nick2) {
           // Both tabs spawn under the same nick, and tab1/tab2 already see
           // each other via the multibox relay (_0x12ac51.teamPlayers) - if
           // the server includes your own connection(s) in this roster too,
@@ -7031,9 +7031,693 @@
       this.time = Date.now();
     }
   }
+
+
+  // ========================================================================
+  // Endymion self-hosted full feature pack (1.2.0)
+  //   ws1: playable Tab 1
+  //   ws2: playable Tab 2
+  //   ws3: authenticated hot standby, promoted on death/disconnect/K kill
+  // ========================================================================
+  (() => {
+    "use strict";
+
+    const ENDYMION_VERSION = "1.2.1";
+    const ENDYMION_BUILD = "FULL-WS3-PROMOTION-DUAL-IDENTITY-PERSISTENT-MOVE";
+    const now = () => Date.now();
+
+    const cleanOfficialSkin = value => String(value || "")
+      .trim()
+      .replace(/^free\//i, "")
+      .replace(/\.png$/i, "");
+
+    const skinCode = value => {
+      const raw = String(value || "").trim();
+      if (!raw) return "XXXXXXX";
+      if (/^[a-zA-Z0-9]{5,8}$/.test(raw)) return raw;
+      const code = _0x386cbc.getImgurCode(raw);
+      return code && code !== "XXXXXXX" ? code : "XXXXXXX";
+    };
+
+    const skinUrl = value => {
+      const code = skinCode(value);
+      return code === "XXXXXXX" ? "" : _0x386cbc.code2Url(code);
+    };
+
+    const defaultProfile = selected => ({
+      nick: "profile " + selected,
+      nick2: "profile " + selected + " 2",
+      skin: "https://i.imgur.com/nRqSis7.png",
+      skin2: "",
+      arbSkin: "",
+      arbSkin2: ""
+    });
+
+    const profileKey = selected => "profile" + selected;
+    const normalizeProfile = (profile, selected) => Object.assign(defaultProfile(selected), profile || {});
+    const getProfile = selected => normalizeProfile(_0x19d5af.get("profiles", profileKey(selected)), selected);
+    const saveProfile = (selected, profile) => {
+      const normalized = normalizeProfile(profile, selected);
+      _0x19d5af.set("profiles", profileKey(selected), normalized);
+      return normalized;
+    };
+
+    const syncInternalIdentity = profile => {
+      _0x90a1a7._nick = String(profile.nick || "Unnamed Cell");
+      _0x90a1a7._nick2 = String(profile.nick2 || profile.nick || "Unnamed Cell 2");
+      _0x90a1a7._arbSkin = cleanOfficialSkin(profile.arbSkin);
+      _0x90a1a7._arbSkin2 = cleanOfficialSkin(profile.arbSkin2);
+      _0x90a1a7._skin = skinCode(profile.skin);
+      _0x90a1a7._skin2 = skinCode(profile.skin2);
+    };
+
+    const readProfileFromDom = () => {
+      const selected = Number(_0x50f0c6.selected || 1);
+      const profile = getProfile(selected);
+      profile.nick = String(_0x14f7b2("#nick").val() || "").trim() || "Unnamed Cell";
+      profile.nick2 = String(_0x14f7b2("#nick2").val() || "").trim() || (profile.nick + " 2");
+      profile.arbSkin = cleanOfficialSkin(_0x14f7b2("#arbSkin").val());
+      profile.arbSkin2 = cleanOfficialSkin(_0x14f7b2("#arbSkin2").val());
+      const rawSkin1 = String(_0x14f7b2("#skin").val() || "").trim();
+      const rawSkin2 = String(_0x14f7b2("#skin2").val() || "").trim();
+      profile.skin = rawSkin1 ? (skinUrl(rawSkin1) || profile.skin || "") : "";
+      profile.skin2 = rawSkin2 ? (skinUrl(rawSkin2) || profile.skin2 || "") : "";
+      if (profile.skin) profile.arbSkin = "";
+      if (profile.skin2) profile.arbSkin2 = "";
+      saveProfile(selected, profile);
+      syncInternalIdentity(profile);
+      return profile;
+    };
+
+    // --------------------------------------------------------------------
+    // Independent profile fields for ws1 and ws2.
+    // --------------------------------------------------------------------
+    _0x50f0c6.setDomValues = function endymionSetDomValues() {
+      const profile = saveProfile(this.selected, getProfile(this.selected));
+      _0x14f7b2("#tag").val(this.tag);
+      _0x14f7b2("#nick").val(profile.nick);
+      _0x14f7b2("#nick2").val(profile.nick2);
+      _0x14f7b2("#arbSkin").val(profile.arbSkin);
+      _0x14f7b2("#arbSkin2").val(profile.arbSkin2);
+      _0x14f7b2("#skin").val(profile.skin);
+      _0x14f7b2("#skin2").val(profile.skin2);
+      this.updateMainSkin();
+      for (let index = 8; index > 0; index -= 1) this.updatePreviewSkin(index);
+    };
+
+    const originalProfileEvents = _0x50f0c6.addEvents;
+    _0x50f0c6.addEvents = function endymionProfileEvents() {
+      originalProfileEvents.call(this);
+      const bind = (selector, fn) => _0x14f7b2(selector)
+        .off("blur change")
+        .on("blur.endymion change.endymion", fn);
+      bind("#nick", () => this.setNick(_0x14f7b2("#nick").val()));
+      bind("#nick2", () => this.setNick2(_0x14f7b2("#nick2").val()));
+      bind("#arbSkin", () => this.setarbSkin());
+      bind("#arbSkin2", () => this.setarbSkin2());
+      bind("#skin", () => this.setSkin(_0x14f7b2("#skin").val()));
+      bind("#skin2", () => this.setSkin2(_0x14f7b2("#skin2").val()));
+    };
+
+    _0x50f0c6.switch = function endymionSwitchProfile(selected) {
+      this.selected = Number(selected) || 1;
+      _0x19d5af.set("profiles", "selected", this.selected);
+      const profile = saveProfile(this.selected, getProfile(this.selected));
+      _0x14f7b2("#nick").val(profile.nick);
+      _0x14f7b2("#nick2").val(profile.nick2);
+      _0x14f7b2("#arbSkin").val(profile.arbSkin);
+      _0x14f7b2("#arbSkin2").val(profile.arbSkin2);
+      _0x14f7b2("#skin").val(profile.skin);
+      _0x14f7b2("#skin2").val(profile.skin2);
+      syncInternalIdentity(profile);
+      this.updateMainSkin();
+    };
+
+    _0x50f0c6.setNick = function endymionSetNick(value) {
+      if (_0x90a1a7._isAlive) {
+        _0x14f7b2("#nick").val(_0x90a1a7.nick);
+        return _0x40f48a.alert("Endymion", "Nick 1 cannot change while Tab 1 is alive.");
+      }
+      const profile = getProfile(this.selected);
+      profile.nick = String(value || "").trim() || "Unnamed Cell";
+      saveProfile(this.selected, profile);
+      _0x90a1a7._nick = profile.nick;
+      try { _0x2d5cce.nick(); } catch (error) {}
+    };
+
+    _0x50f0c6.setNick2 = function endymionSetNick2(value) {
+      if (_0x90a1a7._isAlive2) {
+        _0x14f7b2("#nick2").val(_0x90a1a7.nick2);
+        return _0x40f48a.alert("Endymion", "Nick 2 cannot change while Tab 2 is alive.");
+      }
+      const profile = getProfile(this.selected);
+      profile.nick2 = String(value || "").trim() || ((profile.nick || "Unnamed Cell") + " 2");
+      saveProfile(this.selected, profile);
+      _0x90a1a7._nick2 = profile.nick2;
+    };
+
+    _0x50f0c6.setarbSkin = function endymionOfficialSkin1() {
+      const profile = getProfile(this.selected);
+      profile.arbSkin = cleanOfficialSkin(_0x14f7b2("#arbSkin").val());
+      if (profile.arbSkin) {
+        profile.skin = "";
+        _0x14f7b2("#skin").val("");
+      }
+      saveProfile(this.selected, profile);
+      _0x90a1a7._arbSkin = profile.arbSkin;
+      _0x90a1a7._skin = profile.skin ? skinCode(profile.skin) : "XXXXXXX";
+      this.updateMainSkin();
+      this.updatePreviewSkin(this.selected);
+    };
+
+    _0x50f0c6.setarbSkin2 = function endymionOfficialSkin2() {
+      const profile = getProfile(this.selected);
+      profile.arbSkin2 = cleanOfficialSkin(_0x14f7b2("#arbSkin2").val());
+      if (profile.arbSkin2) {
+        profile.skin2 = "";
+        _0x14f7b2("#skin2").val("");
+      }
+      saveProfile(this.selected, profile);
+      _0x90a1a7._arbSkin2 = profile.arbSkin2;
+      _0x90a1a7._skin2 = profile.skin2 ? skinCode(profile.skin2) : "XXXXXXX";
+    };
+
+    _0x50f0c6.setSkin = function endymionUrlSkin1(value) {
+      const raw = String(value || "").trim();
+      const profile = getProfile(this.selected);
+      if (!raw) {
+        profile.skin = "";
+        saveProfile(this.selected, profile);
+        _0x90a1a7._skin = "XXXXXXX";
+        this.updateMainSkin();
+        return;
+      }
+      const canonical = skinUrl(raw);
+      if (!canonical) return _0x40f48a.alert("Endymion", _0x59f59a.current.notif.invalidSkinUrl);
+      profile.skin = canonical;
+      profile.arbSkin = "";
+      saveProfile(this.selected, profile);
+      _0x14f7b2("#skin").val(canonical);
+      _0x14f7b2("#arbSkin").val("");
+      _0x90a1a7._skin = skinCode(canonical);
+      _0x90a1a7._arbSkin = "";
+      this.updateMainSkin();
+      this.updatePreviewSkin(this.selected);
+      try { _0x2d5cce.skin(); } catch (error) {}
+    };
+
+    _0x50f0c6.setSkin2 = function endymionUrlSkin2(value) {
+      const raw = String(value || "").trim();
+      const profile = getProfile(this.selected);
+      if (!raw) {
+        profile.skin2 = "";
+        saveProfile(this.selected, profile);
+        _0x90a1a7._skin2 = "XXXXXXX";
+        return;
+      }
+      const canonical = skinUrl(raw);
+      if (!canonical) return _0x40f48a.alert("Endymion", _0x59f59a.current.notif.invalidSkinUrl);
+      profile.skin2 = canonical;
+      profile.arbSkin2 = "";
+      saveProfile(this.selected, profile);
+      _0x14f7b2("#skin2").val(canonical);
+      _0x14f7b2("#arbSkin2").val("");
+      _0x90a1a7._skin2 = skinCode(canonical);
+      _0x90a1a7._arbSkin2 = "";
+    };
+
+    _0x50f0c6.updateMainSkin = function endymionUpdateMainSkin() {
+      const profile = getProfile(this.selected);
+      const url = skinUrl(profile.skin) || (profile.arbSkin ? "./res/skins/free/" + cleanOfficialSkin(profile.arbSkin) + ".png" : "");
+      _0x14f7b2(".skin-preview").css("background", url ? "url(" + url + ") center/cover" : "#222");
+    };
+
+    _0x50f0c6.updatePreviewSkin = function endymionUpdatePreviewSkin(selected) {
+      const profile = getProfile(selected);
+      const url = skinUrl(profile.skin) || (profile.arbSkin ? "./res/skins/free/" + cleanOfficialSkin(profile.arbSkin) + ".png" : "");
+      if (url) _0x14f7b2(".skin-selector[value=" + selected + "]").css("background", "url(" + url + ") center/cover");
+    };
+
+    const originalPlayerInit = _0x90a1a7.init;
+    _0x90a1a7.init = function endymionPlayerInit() {
+      const result = originalPlayerInit.apply(this, arguments);
+      const profile = getProfile(Number(_0x50f0c6.selected || 1));
+      syncInternalIdentity(profile);
+      return result;
+    };
+
+    Object.defineProperty(_0x90a1a7, "nick2", {
+      configurable: true,
+      get() { return String(this._nick2 || this._nick || "").substring(0, 15); },
+      set(value) { this._nick2 = String(value || ""); }
+    });
+    Object.defineProperty(_0x90a1a7, "arbSkin2", {
+      configurable: true,
+      get() { return this._arbSkin2 || ""; },
+      set(value) { this._arbSkin2 = cleanOfficialSkin(value); }
+    });
+    Object.defineProperty(_0x90a1a7, "skin2", {
+      configurable: true,
+      get() { return this._skin2 || "XXXXXXX"; },
+      set(value) { this._skin2 = skinCode(value); }
+    });
+    Object.defineProperty(_0x90a1a7, "worldID2", {
+      configurable: true,
+      get() {
+        const source = String(this._nick2 || this._nick || "");
+        let id = source.substring(source.indexOf("}") + 1).replace("%*^", "");
+        return ":party" === _0x31c9b4.gMode ? id + this.colorHex2 : id;
+      }
+    });
+
+    _0x14d4a3.myCellCheck = function endymionMyCellCheck(id, cell, tab) {
+      const ids = Number(tab) === 2 ? this.myCellsIDs2 : this.myCellsIDs;
+      const owned = Number(tab) === 2 ? this.myCells2 : this.myCells;
+      if (!ids.has(id)) return;
+      owned.set(id, cell);
+      ids.delete(id);
+      cell.isMine = true;
+      cell.nick = Number(tab) === 2 ? _0x90a1a7.nick2 : _0x90a1a7.nick;
+    };
+
+    // Read fields at spawn time as well, so clicking Play immediately after
+    // typing does not depend on a blur event arriving first.
+    _0x302a2c.spawnTab = function endymionSpawnTab(tab) {
+      tab = Number(tab);
+      if (tab !== 1 && tab !== 2) return false;
+      const dead = tab === 1 ? !_0x90a1a7._isAlive : !_0x90a1a7._isAlive2;
+      if (!this.chekConnection(tab) || !dead) return false;
+
+      const profile = readProfileFromDom();
+      _0xddb6d6.isSpectating = false;
+      const second = tab === 2;
+      const nick = String(second ? profile.nick2 : profile.nick).trim() || "Unnamed cell";
+      const custom = skinCode(second ? profile.skin2 : profile.skin);
+      const official = cleanOfficialSkin(second ? profile.arbSkin2 : profile.arbSkin);
+      const packet = { n: unescape(encodeURIComponent(nick)) };
+      if (custom !== "XXXXXXX") {
+        packet.s = unescape(encodeURIComponent(custom));
+        packet.w = "";
+      } else if (official) {
+        packet.s = unescape(encodeURIComponent("free/" + official));
+        packet.w = "";
+      }
+      const json = JSON.stringify(packet);
+      const view = this.createView(json.length + 2);
+      view.setUint8(0, 0, true);
+      for (let index = 0; index < json.length; index += 1) view.setUint8(index + 1, json.charCodeAt(index), true);
+      view.setUint8(json.length + 1, 0, true);
+      this.sendPacket(view, tab);
+      return true;
+    };
+
+    const originalCreateSkinMap = _0x386cbc.createSkinMap;
+    _0x386cbc.createSkinMap = function endymionCreateSkinMap() {
+      originalCreateSkinMap.call(this);
+      const add = (id, custom, official) => {
+        if (!id) return;
+        const code = skinCode(custom);
+        if (code !== "XXXXXXX") this.skinMap.set(id, this.code2Url(code));
+        else if (official) this.skinMap.set(id, "./res/skins/free/" + cleanOfficialSkin(official) + ".png");
+      };
+      add(_0x90a1a7.worldID, _0x90a1a7._skin, _0x90a1a7._arbSkin);
+      add(_0x90a1a7.worldID2, _0x90a1a7._skin2, _0x90a1a7._arbSkin2);
+    };
+
+    // --------------------------------------------------------------------
+    // Persistent movement: each playable slot remembers its own last heading.
+    // The inactive slot receives a far-away target every 40 ms, so it keeps
+    // travelling to the arena edge rather than reaching a stale target and
+    // stopping after you switch tabs.
+    // --------------------------------------------------------------------
+    const originalMouseInit = _0x128142.init;
+    _0x128142.init = function endymionMouseInit() {
+      const result = originalMouseInit.apply(this, arguments);
+      this.tabDirections = new Map();
+      this.lastTargets = new Map();
+      return result;
+    };
+
+    _0x128142.getTabCenter = function endymionGetTabCenter(tab) {
+      const cells = tab === 2 ? _0x14d4a3.myCells2 : _0x14d4a3.myCells;
+      let weight = 0, x = 0, y = 0;
+      for (const cell of cells.values()) {
+        const radius = Math.max(1, Number(cell.animRadius || cell.radius || 1));
+        const w = radius * radius;
+        const cx = Number.isFinite(Number(cell.animX)) ? Number(cell.animX) : Number(cell.x);
+        const cy = Number.isFinite(Number(cell.animY)) ? Number(cell.animY) : Number(cell.y);
+        if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;
+        x += cx * w;
+        y += cy * w;
+        weight += w;
+      }
+      return weight > 0 ? { x: x / weight, y: y / weight } : null;
+    };
+
+    _0x128142.rememberDirection = function endymionRememberDirection(tab, targetX, targetY) {
+      if (!this.tabDirections) this.tabDirections = new Map();
+      if (!this.lastTargets) this.lastTargets = new Map();
+      const center = this.getTabCenter(tab);
+      if (!center) return;
+      const dx = Number(targetX) - center.x;
+      const dy = Number(targetY) - center.y;
+      const length = Math.hypot(dx, dy);
+      if (length > 8) {
+        this.tabDirections.set(tab, { x: dx / length, y: dy / length });
+        this.lastTargets.set(tab, { x: Number(targetX), y: Number(targetY) });
+      }
+    };
+
+    _0x302a2c.mouseForTab = function endymionMouseForTab(tab, x, y) {
+      tab = Number(tab);
+      if ((tab !== 1 && tab !== 2) || !this.chekConnection(tab)) return false;
+      const view = this.createView(17);
+      view.setUint8(0, 16, true);
+      view.setFloat64(1, Math.fround(Math.trunc(x)), true);
+      view.setFloat64(9, Math.fround(Math.trunc(y)), true);
+      this.sendPacket(view, tab);
+      return true;
+    };
+
+    _0x302a2c.mouse = function endymionMouse(x, y) {
+      return this.mouseForTab(_0x90a1a7.typeID, x, y);
+    };
+
+    _0x128142.keepMoving = function endymionKeepMoving(tab) {
+      if (!this.tabDirections) this.tabDirections = new Map();
+      const alive = tab === 2 ? _0x90a1a7._isAlive2 : _0x90a1a7._isAlive;
+      const center = this.getTabCenter(tab);
+      const direction = this.tabDirections.get(tab);
+      if (!alive || !center || !direction) return false;
+      const mapEdge = Number(_0x996564.edge || 16000);
+      const distance = Math.max(64000, mapEdge * 4);
+      return _0x302a2c.mouseForTab(tab, center.x + direction.x * distance, center.y + direction.y * distance);
+    };
+
+    _0x128142.send = function endymionSendMovement() {
+      if (!this.tabDirections) this.tabDirections = new Map();
+      if (!this.lastTargets) this.lastTargets = new Map();
+      const zero = { x: 0, y: 0 };
+      const active = Number(_0x90a1a7.typeID || 1);
+      const shift = active === 2 ? _0x996564.position : zero;
+      this.canvasX = (this.x - this.canvas.width / 2) / _0xddb6d6.viewport + _0xddb6d6.x + shift.x;
+      this.canvasY = (this.y - this.canvas.height / 2) / _0xddb6d6.viewport + _0xddb6d6.y + shift.y;
+
+      if (_0xddb6d6.isSpectating && _0x3a83be.isTurnedOn) {
+        _0x302a2c.mouseForTab(active, _0x3a83be.center.x, _0x3a83be.center.y);
+        return;
+      }
+      if (_0x90a1a7.movementPaused) {
+        _0x302a2c.mouseForTab(active, _0x90a1a7.x, _0x90a1a7.y);
+        return;
+      }
+
+      this.rememberDirection(active, this.canvasX, this.canvasY);
+      _0x302a2c.mouseForTab(active, this.canvasX, this.canvasY);
+      this.keepMoving(active === 1 ? 2 : 1);
+    };
+
+    // --------------------------------------------------------------------
+    // ws3 standby lifecycle, promotion, kill/recycle, auto-death recovery.
+    // --------------------------------------------------------------------
+    _0x18a8d1.setBackupPhase = function endymionSetBackupPhase(phase) {
+      this.backupPhase = String(phase || "Waiting");
+      this.backupPhaseSince = now();
+      this.connectionStatus?.();
+    };
+
+    _0x18a8d1.statusSnapshot = function endymionStatusSnapshot() {
+      const tabStatus = (socket, connected, alive, pending) => {
+        if (alive) return "Alive";
+        if (!socket) return this.ip ? "Reconnecting" : "Offline";
+        if (socket.readyState === WebSocket.CONNECTING) return "Connecting";
+        if (socket.readyState === WebSocket.OPEN) return connected ? (pending ? "Spawning" : "Ready") : "Verifying";
+        return "Reconnecting";
+      };
+      let tab3 = "Waiting";
+      if (this.backupReady && this.ws3Open) tab3 = "Ready";
+      else if (this.ws3 && this.ws3.readyState === WebSocket.CONNECTING) tab3 = "Connecting";
+      else if (this.ws3Open) tab3 = "Verifying";
+      else if (this.backupConnecting) tab3 = "Connecting";
+      else if (this.connected && this.connected2) tab3 = this.backupPhase || "Replacing";
+      return {
+        version: ENDYMION_VERSION,
+        build: ENDYMION_BUILD,
+        activeTab: _0x90a1a7.typeID,
+        tab1: tabStatus(this.ws, this.connected, _0x90a1a7._isAlive, this.pendingRespawns?.has(1)),
+        tab2: tabStatus(this.ws2, this.connected2, _0x90a1a7._isAlive2, this.pendingRespawns?.has(2)),
+        tab3,
+        standbyReady: Boolean(this.backupReady && this.ws3Open),
+        pendingPromotions: [...(this.pendingPromotions || [])],
+        ws3: this.ws3 ? { readyState: this.ws3.readyState, open: this.ws3Open } : null
+      };
+    };
+
+    _0x18a8d1.connectionStatus = function endymionConnectionStatus() {
+      const status = this.statusSnapshot();
+      let hud = document.getElementById("endymion-connection-status");
+      if (!hud && document.body) {
+        hud = document.createElement("div");
+        hud.id = "endymion-connection-status";
+        hud.style.cssText = "position:fixed;right:10px;top:150px;z-index:2147483000;color:#f1f1f1;background:rgba(5,5,9,.88);border:1px solid rgba(255,255,255,.22);border-radius:5px;padding:5px 8px;font:11px/1.25 Arial,sans-serif;pointer-events:none;white-space:nowrap;text-shadow:0 1px 2px #000";
+        hud.title = "K or /kill promotes Standby 3 into the active tab";
+        document.body.appendChild(hud);
+      }
+      if (hud) hud.textContent = `Endymion ${ENDYMION_VERSION} | Tab 1: ${status.tab1} | Tab 2: ${status.tab2} | Standby 3: ${status.tab3}`;
+      return status;
+    };
+
+    _0x18a8d1.startConnectionStatus = function endymionStartStatus() {
+      if (this.connectionStatusTimer) clearInterval(this.connectionStatusTimer);
+      this.connectionStatusTimer = setInterval(() => this.connectionStatus(), 250);
+      setTimeout(() => this.connectionStatus(), 0);
+    };
+
+    const originalManagerInit = _0x18a8d1.init;
+    _0x18a8d1.init = function endymionManagerInit() {
+      const result = originalManagerInit.apply(this, arguments);
+      this.pendingRespawns = new Set();
+      this.pendingPromotions = new Set();
+      this.promotionInFlight = 0;
+      this.recycleLocks = new Set();
+      this.backupPhase = "Waiting";
+      this.backupPhaseSince = now();
+      this.startConnectionStatus();
+      return result;
+    };
+
+    const originalCreateSocket = _0x18a8d1.createSocket;
+    _0x18a8d1.createSocket = function endymionCreateSocket(slot) {
+      if (Number(slot) === 3) this.setBackupPhase("Connecting");
+      const socket = originalCreateSocket.call(this, slot);
+      this.connectionStatus();
+      return socket;
+    };
+
+    const originalConnectBackup = _0x18a8d1.connectBackup;
+    _0x18a8d1.connectBackup = function endymionConnectBackup() {
+      if (!this.ws3Open) this.setBackupPhase("Connecting");
+      return originalConnectBackup.apply(this, arguments);
+    };
+
+    const originalProtocolInit = _0x302a2c.init;
+    _0x302a2c.init = async function endymionProtocolInit(slot) {
+      const result = await originalProtocolInit.call(this, slot);
+      if (Number(slot) === 3 && _0x18a8d1.backupReady && _0x18a8d1.ws3Open) {
+        _0x18a8d1.setBackupPhase("Ready");
+        _0x18a8d1.pumpPromotionQueue();
+      }
+      _0x18a8d1.connectionStatus();
+      return result;
+    };
+
+    _0x18a8d1.promoteBackup = function endymionPromoteBackup(tab, reason = "Standby promotion") {
+      tab = Number(tab);
+      if ((tab !== 1 && tab !== 2) || !this.backupReady || !this.ws3Open || this.promotionInFlight) return false;
+
+      const promoted = this.ws3;
+      const key = tab === 2 ? "ws2" : "ws";
+      const retired = this[key];
+      this.promotionInFlight = tab;
+      this.pendingPromotions?.delete(tab);
+      this.pendingRespawns?.delete(tab);
+
+      _0x302a2c.stopPingLoop(tab);
+      _0x302a2c.stopPingLoop(3);
+      if (retired && retired !== promoted) {
+        retired.onopen = retired.onmessage = retired.onclose = retired.onerror = null;
+        try { retired.close(1000, "Endymion active slot recycled"); } catch (error) {}
+      }
+      promoted.onopen = promoted.onmessage = promoted.onclose = promoted.onerror = null;
+
+      this[key] = promoted;
+      if (tab === 1) this.connected = true; else this.connected2 = true;
+      this.ws3 = null;
+      this.connected3 = false;
+      this.backupReady = false;
+      this.backupConnecting = false;
+      this.setBackupPhase("Replacing");
+
+      _0x245b10.clearCells(tab);
+      if (tab === 1) _0x90a1a7._isAlive = false; else _0x90a1a7._isAlive2 = false;
+      this.bindSocket(promoted, tab);
+      _0x302a2c.initPingLoop(tab);
+      _0x90a1a7.typeID = tab;
+      _0x40f48a.alert("Endymion", `Standby Tab 3 promoted into Tab ${tab}: ${reason}`);
+
+      const spawn = () => _0x302a2c.spawnTab(tab);
+      setTimeout(spawn, 100);
+      setTimeout(() => {
+        const alive = tab === 2 ? _0x90a1a7._isAlive2 : _0x90a1a7._isAlive;
+        if (!alive) spawn();
+      }, 650);
+
+      this.scheduleBackup(900);
+      setTimeout(() => {
+        if (this.promotionInFlight === tab) this.promotionInFlight = 0;
+        this.pumpPromotionQueue();
+        this.connectionStatus();
+      }, 1500);
+      this.connectionStatus();
+      return true;
+    };
+
+    _0x18a8d1.queuePromotion = function endymionQueuePromotion(tab, reason = "Playable tab died") {
+      tab = Number(tab);
+      if ((tab !== 1 && tab !== 2) || !this.ip) return false;
+      if (localStorage.getItem("endymion-auto-promote-dead") === "off") return false;
+      this.pendingPromotions.add(tab);
+      this.lastPromotionReason = reason;
+      setTimeout(() => this.pumpPromotionQueue(), 180);
+      this.connectionStatus();
+      return true;
+    };
+
+    _0x18a8d1.pumpPromotionQueue = function endymionPumpPromotionQueue() {
+      if (this.promotionInFlight) return false;
+      for (const tab of [...this.pendingPromotions]) {
+        const alive = tab === 2 ? _0x90a1a7._isAlive2 : _0x90a1a7._isAlive;
+        if (alive) {
+          this.pendingPromotions.delete(tab);
+          continue;
+        }
+        if (!this.backupReady || !this.ws3Open) {
+          this.scheduleBackup(0);
+          return false;
+        }
+        return this.promoteBackup(tab, this.lastPromotionReason || "Playable tab died");
+      }
+      return false;
+    };
+
+    _0x18a8d1.recycleActiveCell = function endymionRecycleActiveCell() {
+      const tab = Number(_0x90a1a7.typeID || 1);
+      const alive = tab === 2 ? _0x90a1a7._isAlive2 : _0x90a1a7._isAlive;
+      if (!alive) {
+        _0x40f48a.warn("Endymion", `Tab ${tab} is not alive.`);
+        return false;
+      }
+      if (!this.backupReady || !this.ws3Open) {
+        _0x40f48a.warn("Endymion", "Standby Tab 3 is not ready yet; kill/recycle was not performed.");
+        return false;
+      }
+      if (this.recycleLocks.has(tab)) return false;
+      this.recycleLocks.add(tab);
+      const promoted = this.promoteBackup(tab, "manual K /kill recycle");
+      setTimeout(() => this.recycleLocks.delete(tab), 1800);
+      return promoted;
+    };
+
+    const originalDead1 = _0x90a1a7.dead;
+    _0x90a1a7.dead = function endymionDead1() {
+      const wasAlive = this._isAlive;
+      const result = originalDead1.apply(this, arguments);
+      if (wasAlive && !this._isAlive) _0x18a8d1.queuePromotion(1, "Tab 1 died");
+      return result;
+    };
+
+    const originalDead2 = _0x90a1a7.dead2;
+    _0x90a1a7.dead2 = function endymionDead2() {
+      const wasAlive = this._isAlive2;
+      const result = originalDead2.apply(this, arguments);
+      if (wasAlive && !this._isAlive2) _0x18a8d1.queuePromotion(2, "Tab 2 died");
+      return result;
+    };
+
+    const originalOnClose = _0x18a8d1.onClose;
+    _0x18a8d1.onClose = function endymionOnClose(tab, socket) {
+      const wasAlive = Number(tab) === 1 ? _0x90a1a7._isAlive : Number(tab) === 2 ? _0x90a1a7._isAlive2 : false;
+      if ((Number(tab) === 1 || Number(tab) === 2) && wasAlive) this.pendingRespawns?.add(Number(tab));
+      if (Number(tab) === 3) this.setBackupPhase("Retrying");
+      const result = originalOnClose.call(this, tab, socket);
+      this.connectionStatus();
+      return result;
+    };
+
+    const originalDisconnect = _0x18a8d1.disconnect;
+    _0x18a8d1.disconnect = function endymionDisconnect() {
+      const result = originalDisconnect.apply(this, arguments);
+      this.pendingPromotions?.clear();
+      this.pendingRespawns?.clear();
+      this.promotionInFlight = 0;
+      this.setBackupPhase("Waiting");
+      return result;
+    };
+
+    const originalResetData = _0x18a8d1.resetData;
+    _0x18a8d1.resetData = function endymionResetData() {
+      const result = originalResetData.apply(this, arguments);
+      _0x128142.tabDirections?.clear();
+      _0x128142.lastTargets?.clear();
+      return result;
+    };
+
+    const originalChat = _0x302a2c.chat;
+    _0x302a2c.chat = function endymionChat(message, tab) {
+      const command = String(message || "").trim().toLowerCase();
+      if (command === "/kill" || command === "/recycle") {
+        _0x18a8d1.recycleActiveCell();
+        return;
+      }
+      return originalChat.call(this, message, tab);
+    };
+
+    document.addEventListener("keydown", event => {
+      if (event.code !== "KeyK" || event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
+      if (event.target?.matches?.("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      _0x18a8d1.recycleActiveCell();
+    }, true);
+
+    window.ENDYMION_BUILD = ENDYMION_BUILD;
+    window.DARK_ENDYMION = {
+      version: ENDYMION_VERSION,
+      build: ENDYMION_BUILD,
+      status: () => _0x18a8d1.statusSnapshot(),
+      kill: () => _0x18a8d1.recycleActiveCell(),
+      recycleActiveCell: () => _0x18a8d1.recycleActiveCell(),
+      promote: tab => _0x18a8d1.promoteBackup(Number(tab), "console request"),
+      setAutoPromoteDead(enabled) {
+        localStorage.setItem("endymion-auto-promote-dead", enabled === false ? "off" : "on");
+        return enabled !== false;
+      },
+      profile: () => getProfile(Number(_0x50f0c6.selected || 1)),
+      ws3: () => ({
+        socket: _0x18a8d1.ws3,
+        open: Boolean(_0x18a8d1.ws3Open),
+        ready: Boolean(_0x18a8d1.backupReady),
+        connecting: Boolean(_0x18a8d1.backupConnecting),
+        phase: _0x18a8d1.backupPhase || "Waiting"
+      })
+    };
+
+    console.log(`[Endymion] ${ENDYMION_VERSION} loaded: ${ENDYMION_BUILD}`);
+  })();
+
   _0x1c478d.onload = () => (
     _0x14f7b2("#loading-screen").html(
-      '<div class="ls-title">Drag+</div><div class="ls-spinner"><span id="ls-icon"><i class="fa fa-solid fa-circle-notch fa-spin"></i></span><span style="display:block;" id="ls-message">Loading...</span></div>',
+      '<div class="ls-title">Endymion</div><div class="ls-spinner"><span id="ls-icon"><i class="fa fa-solid fa-circle-notch fa-spin"></i></span><span style="display:block;" id="ls-message">Loading...</span></div>',
     ),
     49 > _0xb45f1b.browserVersion()
       ? (_0x14f7b2("#ls-icon").html('<i class="fa fa-chrome" aria-hidden="true"></i>'),
