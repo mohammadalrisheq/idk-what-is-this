@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         DarkEndymion - Self Hosted 3rb.io Client
-// @namespace    https://github.com/YOUR-GITHUB-USERNAME/DarkEndymion
+// @namespace    https://github.com/mohammadalrisheq/idk-what-is-this
 // @version      1.0.0
 // @description  Loads the authorized DarkEndymion client from your own GitHub Pages host.
 // @author       Project contributors
@@ -8,14 +8,14 @@
 // @match        https://*.3rb.io/*
 // @run-at       document-start
 // @grant        GM_xmlhttpRequest
-// @connect      YOUR-GITHUB-USERNAME.github.io
+// @connect      mohammadalrisheq.github.io
 // ==/UserScript==
 
 (() => {
   "use strict";
 
   // Change this after enabling GitHub Pages for the repository.
-  const BASE_URL = "https://YOUR-GITHUB-USERNAME.github.io/DarkEndymion/";
+  const BASE_URL = "https://mohammadalrisheq.github.io/idk-what-is-this/";
   const FILES = Object.freeze({
     page: "index.html",
     scripts: ["v.js", "m.js"],
