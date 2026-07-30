@@ -7034,7 +7034,7 @@
 
 
   // ========================================================================
-  // Endymion V3 self-hosted full feature pack (3.0.0)
+  // Endymion V3 self-hosted full feature pack (3.0.1)
   //   ws1: playable Tab 1
   //   ws2: playable Tab 2
   //   ws3: authenticated hot standby, promoted on death/disconnect/K kill
@@ -7042,8 +7042,8 @@
   (() => {
     "use strict";
 
-    const ENDYMION_VERSION = "3.0.0";
-    const ENDYMION_BUILD = "ENDYMION-V3-TAG-FIRST-FULL-TEAM-UNION-WS3-STANDBY";
+    const ENDYMION_VERSION = "3.0.1";
+    const ENDYMION_BUILD = "ENDYMION-V3.0.1-TAG-UNION-GHOST-GUARD-WS3-STANDBY";
     const now = () => Date.now();
     const AUTO_RESPAWN_KEY = "endymion-auto-promote-dead";
     const CONTINUE_MOVEMENT_KEY = "endymion-continue-movement";
@@ -7581,6 +7581,7 @@
       this.pendingRespawns = new Set();
       this.pendingPromotions = new Set();
       this.promotionInFlight = 0;
+      this.autoRespawnGeneration = 0;
       this.recycleLocks = new Set();
       this.backupPhase = "Waiting";
       this.backupPhaseSince = now();
@@ -7604,11 +7605,39 @@
 
     const originalProtocolInit = _0x302a2c.init;
     _0x302a2c.init = async function endymionProtocolInit(slot) {
+      const numericSlot = Number(slot);
       const result = await originalProtocolInit.call(this, slot);
-      if (Number(slot) === 3 && _0x18a8d1.backupReady && _0x18a8d1.ws3Open) {
+
+      if (numericSlot === 3 && _0x18a8d1.backupReady && _0x18a8d1.ws3Open) {
         _0x18a8d1.setBackupPhase("Ready");
         _0x18a8d1.pumpPromotionQueue();
       }
+
+      // When an active WebSocket reconnects and automatic respawn is enabled,
+      // spawn it only after the normal verification path has completed. Turning
+      // Auto respawn OFF clears this pending marker, so reconnecting a socket
+      // never silently spawns a cell.
+      if ((numericSlot === 1 || numericSlot === 2) && _0x18a8d1.pendingRespawns?.has(numericSlot)) {
+        if (!isAutoRespawnEnabled()) {
+          _0x18a8d1.pendingRespawns.delete(numericSlot);
+        } else {
+          const generation = Number(_0x18a8d1.autoRespawnGeneration || 0);
+          setTimeout(() => {
+            if (generation !== Number(_0x18a8d1.autoRespawnGeneration || 0) || !isAutoRespawnEnabled()) {
+              _0x18a8d1.pendingRespawns?.delete(numericSlot);
+              _0x18a8d1.connectionStatus?.();
+              return;
+            }
+            const alive = numericSlot === 2 ? _0x90a1a7._isAlive2 : _0x90a1a7._isAlive;
+            if (!alive && _0x302a2c.chekConnection(numericSlot)) {
+              _0x302a2c.spawnTab(numericSlot);
+            }
+            _0x18a8d1.pendingRespawns?.delete(numericSlot);
+            _0x18a8d1.connectionStatus?.();
+          }, 180);
+        }
+      }
+
       _0x18a8d1.connectionStatus();
       return result;
     };
@@ -7678,8 +7707,10 @@
     _0x18a8d1.setAutoRespawn = function endymionSetAutoRespawn(enabled) {
       const value = enabled !== false;
       localStorage.setItem(AUTO_RESPAWN_KEY, value ? "on" : "off");
+      this.autoRespawnGeneration = Number(this.autoRespawnGeneration || 0) + 1;
       if (!value) {
         this.pendingPromotions?.clear();
+        this.pendingRespawns?.clear();
         this.lastPromotionReason = "";
       }
       this.connectionStatus?.();
@@ -7687,6 +7718,11 @@
     };
 
     _0x18a8d1.pumpPromotionQueue = function endymionPumpPromotionQueue() {
+      if (!isAutoRespawnEnabled()) {
+        this.pendingPromotions?.clear();
+        this.pendingRespawns?.clear();
+        return false;
+      }
       if (this.promotionInFlight) return false;
       for (const tab of [...this.pendingPromotions]) {
         const alive = tab === 2 ? _0x90a1a7._isAlive2 : _0x90a1a7._isAlive;
@@ -7737,14 +7773,69 @@
       return result;
     };
 
-    const originalOnClose = _0x18a8d1.onClose;
     _0x18a8d1.onClose = function endymionOnClose(tab, socket) {
-      const wasAlive = Number(tab) === 1 ? _0x90a1a7._isAlive : Number(tab) === 2 ? _0x90a1a7._isAlive2 : false;
-      if ((Number(tab) === 1 || Number(tab) === 2) && wasAlive) this.pendingRespawns?.add(Number(tab));
-      if (Number(tab) === 3) this.setBackupPhase("Retrying");
-      const result = originalOnClose.call(this, tab, socket);
+      const numericTab = Number(tab);
+      const current = numericTab === 1 ? this.ws : numericTab === 2 ? this.ws2 : this.ws3;
+      if (current !== socket) return false;
+
+      _0x302a2c.stopPingLoop(numericTab);
+      if (this.intentionalDisconnect) return false;
+
+      if (numericTab === 3) {
+        this.ws3 = null;
+        this.connected3 = false;
+        this.backupReady = false;
+        this.backupConnecting = false;
+        this.setBackupPhase("Retrying");
+        this.scheduleBackup(1800);
+        this.connectionStatus();
+        return true;
+      }
+
+      if (numericTab !== 1 && numericTab !== 2) return false;
+      const wasAlive = numericTab === 2 ? Boolean(_0x90a1a7._isAlive2) : Boolean(_0x90a1a7._isAlive);
+
+      if (numericTab === 1) {
+        this.ws = null;
+        this.connected = false;
+      } else {
+        this.ws2 = null;
+        this.connected2 = false;
+      }
+      _0x245b10.clearCells(numericTab);
+      _0x40f48a.alert("Endymion", `Tab ${numericTab} disconnected`);
+      console.log(`Websocket ${numericTab} closed`);
+
+      // Auto respawn now gates BOTH promotion and post-reconnect spawning.
+      // With it OFF, the socket may reconnect normally, but it remains idle
+      // until the user explicitly presses Play/switches to that tab.
+      if (wasAlive && isAutoRespawnEnabled()) {
+        this.pendingRespawns?.add(numericTab);
+        if (this.promoteBackup(numericTab, `Tab ${numericTab} disconnected`)) {
+          this.connectionStatus();
+          return true;
+        }
+      } else {
+        this.pendingRespawns?.delete(numericTab);
+        this.pendingPromotions?.delete(numericTab);
+      }
+
+      const generation = Number(this.autoRespawnGeneration || 0);
+      setTimeout(() => {
+        const key = numericTab === 1 ? "ws" : "ws2";
+        if (this.intentionalDisconnect || !this.ip || this[key]) return;
+        // Reconnect the transport regardless of the Auto respawn toggle. The
+        // protocol-init wrapper only spawns it if a still-valid pending marker
+        // exists and the toggle is still ON.
+        this.createSocket(numericTab);
+        if (!isAutoRespawnEnabled() || generation !== Number(this.autoRespawnGeneration || 0)) {
+          this.pendingRespawns?.delete(numericTab);
+        }
+      }, 1000);
+
+      if (!(this.wsOpen || this.ws2Open)) _0x31c9b4.open();
       this.connectionStatus();
-      return result;
+      return true;
     };
 
     const originalDisconnect = _0x18a8d1.disconnect;
@@ -7832,7 +7923,7 @@
     "use strict";
 
     const VERSION = 3;
-    const BUILD = "ENDYMION-V3-TAG-FIRST-FULL-TEAM-UNION-WS3-STANDBY";
+    const BUILD = "ENDYMION-V3.0.1-TAG-UNION-GHOST-GUARD-WS3-STANDBY";
     const CHANNEL_NAME = "endymion-v3-team-union";
     const KEYS = Object.freeze({
       enabled: "endymion-v3-team-enabled",
@@ -7842,22 +7933,29 @@
       nativeRelay: "endymion-v3-team-native-relay",
       relay: "endymion-v3-team-relay-url",
       secret: "endymion-v3-team-secret",
-      installId: "endymion-v3-install-id"
+      installId: "endymion-v3-install-id",
+      ghostGuardMigration: "endymion-v3.0.1-ghost-guard-migrated"
     });
 
     const defaults = Object.freeze({
       enabled: true,
       shareObjects: false,
       showOnMinimap: true,
-      showOnGameCanvas: true,
+      // The old full-size game-canvas projection looked like duplicate/ghost
+      // cells during split/merge transitions. V3.0.1 keeps it OFF by default
+      // and, when enabled, renders lightweight radar markers only.
+      showOnGameCanvas: false,
       useNativeTagRelay: true,
-      sendIntervalMs: 260,
-      collectIntervalMs: 90,
-      aggregateIntervalMs: 90,
-      peerStaleMs: 4200,
-      entityStaleMs: 2100,
-      maxEntities: 280,
-      maxNativeBytes: 48000,
+      sendIntervalMs: 250,
+      collectIntervalMs: 120,
+      aggregateIntervalMs: 160,
+      peerStaleMs: 3000,
+      entityStaleMs: 1100,
+      maxEntities: 180,
+      maxNativeBytes: 24000,
+      fullMapRenderIntervalMs: 50,
+      uiIntervalMs: 500,
+      radarMaxAgeMs: 700,
       relayUrl: "",
       secret: ""
     });
@@ -7892,6 +7990,16 @@
       relayUrl: readText(KEYS.relay, String(bootConfig.relayUrl || defaults.relayUrl)).trim(),
       secret: readText(KEYS.secret, String(bootConfig.secret || defaults.secret)).trim().slice(0, 96)
     };
+
+    // One-time safety migration: existing V3.0.0 installs had the full-size
+    // game overlay enabled by default. Disable it once so stale remote circles
+    // stop appearing as ghost cells. Users can explicitly re-enable the new
+    // lightweight radar markers from Tag / Relay Setup.
+    if (!readBool(KEYS.ghostGuardMigration, false)) {
+      config.showOnGameCanvas = false;
+      writeText(KEYS.gameOverlay, "off");
+      writeText(KEYS.ghostGuardMigration, "on");
+    }
 
     const randomPart = () => {
       try {
@@ -7994,7 +8102,7 @@
     const now = () => Date.now();
     const finite = value => Number.isFinite(Number(value));
     const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value)));
-    const round6 = value => Math.round(Number(value) * 1e6) / 1e6;
+    const round5 = value => Math.round(Number(value) * 1e5) / 1e5;
     const cleanNick = value => {
       let nick = String(value || "").replace(/[\u0000-\u001f\u007f]/g, "");
       const brace = nick.lastIndexOf("}");
@@ -8087,9 +8195,9 @@
     const normalizePoint = (x, y, radius, bounds) => {
       const maxDimension = Math.max(bounds.width, bounds.height);
       return [
-        round6((Number(x) - bounds.left) / bounds.width),
-        round6((Number(y) - bounds.top) / bounds.height),
-        round6(Number(radius) / maxDimension)
+        round5((Number(x) - bounds.left) / bounds.width),
+        round5((Number(y) - bounds.top) / bounds.height),
+        round5(Number(radius) / maxDimension)
       ];
     };
 
@@ -8194,17 +8302,20 @@
         record.mass,
         record.color,
         record.flags,
-        record.nick
+        // Enemy names are not required for the tactical map and account for
+        // a large part of the relay payload. Keep names only for owned/tag
+        // cells, where they are needed for teammate classification.
+        record.flags & (4 | 16) ? record.nick : ""
       ]);
 
       const view = _0xddb6d6?.viewBounds;
       let viewport = null;
       if (view && [view.left, view.top, view.right, view.bottom].every(finite)) {
         viewport = [
-          round6((Number(view.left) - bounds.left) / bounds.width),
-          round6((Number(view.top) - bounds.top) / bounds.height),
-          round6((Number(view.right) - bounds.left) / bounds.width),
-          round6((Number(view.bottom) - bounds.top) / bounds.height)
+          round5((Number(view.left) - bounds.left) / bounds.width),
+          round5((Number(view.top) - bounds.top) / bounds.height),
+          round5((Number(view.right) - bounds.left) / bounds.width),
+          round5((Number(view.bottom) - bounds.top) / bounds.height)
         ];
       }
 
@@ -8299,11 +8410,19 @@
       if (!packet) return false;
       let sent = false;
       try {
+        // BroadcastChannel is retained for same-browser testing. It is local
+        // and does not touch the game/tag transport.
         state.channel?.postMessage(packet);
         sent = true;
       } catch (_error) {}
-      sent = sendNativeTagPacket(packet) || sent;
+
+      // Do not send the same full snapshot through both network relays. When
+      // an external relay is connected it takes priority; otherwise use the
+      // built-in tag relay. This removes duplicate serialization, traffic and
+      // parsing spikes on every client.
       if (socketOpen(state.relay)) sent = sendRelay(packet) || sent;
+      else sent = sendNativeTagPacket(packet) || sent;
+
       if (sent) state.metrics.snapshotsSent += 1;
       return sent;
     };
@@ -8860,51 +8979,118 @@
     };
 
     const drawGameWorldOverlay = (ctx, canvas, timestamp) => {
-      if (!config.enabled || !config.showOnGameCanvas || !ctx || !canvas) return;
+      if (
+        !config.enabled ||
+        !config.showOnGameCanvas ||
+        state.view.visible ||
+        !ctx ||
+        !canvas
+      ) return;
+
       const bounds = primaryBounds();
       if (!bounds || !_0xddb6d6 || !finite(_0xddb6d6.viewport) || Number(_0xddb6d6.viewport) <= 0) return;
+
       const localIds = new Set();
+      const spatial = new Map();
+      const gridSize = 0.025;
+      const addSpatial = (cell, tab) => {
+        if (!cell || cell.fadeStartTime || cell.isFood) return;
+        const id = Number(cell.id);
+        const radius = Number(finite(cell.animRadius) && Number(cell.animRadius) > 0 ? cell.animRadius : cell.radius);
+        let x = Number(finite(cell.animX) ? cell.animX : cell.x);
+        let y = Number(finite(cell.animY) ? cell.animY : cell.y);
+        if (!Number.isInteger(id) || id <= 0 || !finite(x) || !finite(y) || !finite(radius) || radius <= 0) return;
+        if (Number(tab) === 2) {
+          const shift = _0x996564.position;
+          x -= Number(shift.x || 0);
+          y -= Number(shift.y || 0);
+        }
+        const [nx, ny, nr] = normalizePoint(x, y, radius, bounds);
+        localIds.add(id);
+        const gx = Math.floor(nx / gridSize);
+        const gy = Math.floor(ny / gridSize);
+        const key = `${gx}:${gy}`;
+        let bucket = spatial.get(key);
+        if (!bucket) spatial.set(key, bucket = []);
+        bucket.push({ id, nx, ny, nr });
+      };
+
       try {
-        for (const id of _0x14d4a3.cells.keys()) localIds.add(Number(id));
-        for (const id of _0x14d4a3.cells2.keys()) localIds.add(Number(id));
+        for (const cell of _0x14d4a3.cells.values()) addSpatial(cell, 1);
+        for (const cell of _0x14d4a3.cells2.values()) addSpatial(cell, 2);
       } catch (_error) {}
+
+      const spatiallyDuplicated = entity => {
+        if (localIds.has(Number(entity.id))) return true;
+        const gx = Math.floor(Number(entity.nx) / gridSize);
+        const gy = Math.floor(Number(entity.ny) / gridSize);
+        for (let ox = -1; ox <= 1; ox += 1) {
+          for (let oy = -1; oy <= 1; oy += 1) {
+            const bucket = spatial.get(`${gx + ox}:${gy + oy}`);
+            if (!bucket) continue;
+            for (const local of bucket) {
+              const radiusRatio = Number(entity.nr) / Math.max(0.000001, Number(local.nr));
+              if (radiusRatio < 0.42 || radiusRatio > 2.4) continue;
+              const tolerance = Math.max(0.0035, (Number(entity.nr) + Number(local.nr)) * 0.55);
+              if (Math.hypot(Number(entity.nx) - local.nx, Number(entity.ny) - local.ny) <= tolerance) return true;
+            }
+          }
+        }
+        return false;
+      };
+
       const viewport = Number(_0xddb6d6.viewport);
       const cameraX = Number(_0xddb6d6.x || 0);
       const cameraY = Number(_0xddb6d6.y || 0);
-      const maxDimension = Math.max(bounds.width, bounds.height);
-      const draw = (entity, teammate) => {
-        if (localIds.has(Number(entity.id))) return;
+
+      // The old overlay projected full remote cell circles, which looked like
+      // real duplicate cells while a split/merge update was in flight. The
+      // replacement is a lightweight radar marker: position + mass only.
+      const candidates = [...state.remoteEnemies.values()]
+        .filter(entity => (
+          entity?.isPlayer &&
+          timestamp - Number(entity.updatedAt || 0) <= Number(config.radarMaxAgeMs || 700) &&
+          !spatiallyDuplicated(entity)
+        ))
+        .sort((a, b) => Number(b.mass || 0) - Number(a.mass || 0))
+        .slice(0, 80);
+
+      for (const entity of candidates) {
         const worldX = bounds.left + Number(entity.nx) * bounds.width;
         const worldY = bounds.top + Number(entity.ny) * bounds.height;
         const screenX = canvas.width / 2 + (worldX - cameraX) * viewport;
         const screenY = canvas.height / 2 + (worldY - cameraY) * viewport;
-        const radius = clamp(Number(entity.nr) * maxDimension * viewport, 2.5, 260);
-        if (screenX < -radius || screenY < -radius || screenX > canvas.width + radius || screenY > canvas.height + radius) return;
+        const markerRadius = clamp(5 + Math.log10(Math.max(1, Number(entity.mass) || 1)) * 2.2, 7, 16);
+        if (
+          screenX < -markerRadius ||
+          screenY < -markerRadius ||
+          screenX > canvas.width + markerRadius ||
+          screenY > canvas.height + markerRadius
+        ) continue;
+
         const age = Math.max(0, timestamp - Number(entity.updatedAt || timestamp));
-        const alpha = clamp(1 - age / config.entityStaleMs, 0.12, 0.62);
+        const alpha = clamp(1 - age / Number(config.radarMaxAgeMs || 700), 0.18, 0.82);
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.beginPath();
-        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-        ctx.fillStyle = entity.isVirus ? "#67f07b" : entity.isEjected ? "#ffc857" : entity.colorHex || "#a2a9b5";
-        ctx.fill();
-        ctx.setLineDash([Math.max(3, radius * 0.12), Math.max(2, radius * 0.08)]);
-        ctx.strokeStyle = teammate ? "#64e6a2" : entity.conflict ? "#ffb84d" : "#6fe8ff";
-        ctx.lineWidth = clamp(radius * 0.08, 1.2, 4);
+        ctx.arc(screenX, screenY, markerRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = entity.conflict ? "#ffb84d" : "#6fe8ff";
+        ctx.lineWidth = 1.6;
         ctx.stroke();
-        ctx.setLineDash([]);
-        if (entity.isPlayer && radius >= 10) {
-          ctx.globalAlpha = Math.min(0.9, alpha + 0.2);
-          ctx.fillStyle = "#fff";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.font = `700 ${clamp(radius * 0.45, 9, 22)}px Segoe UI,Arial,sans-serif`;
-          ctx.fillText(formatMass(entity.mass), screenX, screenY);
-        }
+
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, 2.1, 0, Math.PI * 2);
+        ctx.fillStyle = /^#[0-9a-f]{6}$/i.test(entity.colorHex) ? entity.colorHex : "#6fe8ff";
+        ctx.fill();
+
+        ctx.globalAlpha = Math.min(0.95, alpha + 0.18);
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.font = "700 10px Segoe UI,Arial,sans-serif";
+        ctx.fillText(formatMass(entity.mass), screenX, screenY - markerRadius - 2);
         ctx.restore();
-      };
-      for (const entity of state.remoteEnemies.values()) draw(entity, false);
-      for (const entity of state.remoteTeammates.values()) draw(entity, true);
+      }
     };
 
     const installStyle = () => {
@@ -9112,7 +9298,7 @@
           <label><input type="checkbox" data-e3-input="native-relay"> Use the built-in tag relay automatically</label>
           <label><input type="checkbox" data-e3-input="objects"> Share viruses and ejected mass</label>
           <label><input type="checkbox" data-e3-input="minimap"> Plot remote enemies on the minimap</label>
-          <label><input type="checkbox" data-e3-input="game-overlay"> Overlay remote tag cells on the game view</label>
+          <label><input type="checkbox" data-e3-input="game-overlay"> Show lightweight remote radar markers on the game view (experimental)</label>
         </div>
         <div class="e3-actions">
           <button type="button" class="primary" data-e3-action="save">SAVE + CONNECT</button>
@@ -9221,11 +9407,10 @@
     };
 
     const transportLabel = () => {
-      const parts = [];
-      if (config.useNativeTagRelay && _0x1530af?.isOpen?.() && state.tag) parts.push("TAG RELAY");
-      if (config.relayUrl) parts.push(state.relayState === "CONNECTED" ? "EXTERNAL RELAY" : state.relayState);
-      if (!parts.length) parts.push("LOCAL ONLY");
-      return parts.join(" + ");
+      if (config.relayUrl && state.relayState === "CONNECTED") return "EXTERNAL RELAY";
+      if (config.useNativeTagRelay && _0x1530af?.isOpen?.() && state.tag) return "TAG RELAY";
+      if (config.relayUrl && state.relayState !== "CONNECTED") return state.relayState;
+      return "LOCAL ONLY";
     };
 
     const summary = () => ({
@@ -9265,7 +9450,7 @@
 
     const updateUi = force => {
       const timestamp = now();
-      if (!force && timestamp - state.lastUiAt < 250) return;
+      if (!force && timestamp - state.lastUiAt < Number(config.uiIntervalMs || 500)) return;
       state.lastUiAt = timestamp;
       installStyle();
       installMainMenu();
@@ -9303,7 +9488,7 @@
         state.lastAggregateAt = timestamp;
         aggregateRemote(timestamp);
       }
-      if (state.view.visible && timestamp - state.lastRenderAt >= 33) {
+      if (state.view.visible && timestamp - state.lastRenderAt >= Number(config.fullMapRenderIntervalMs || 50)) {
         state.lastRenderAt = timestamp;
         renderFullMap(timestamp);
       }
@@ -9432,7 +9617,7 @@
     window.ENDYMION_TEAM_UNION = api;
     window.ENDYMION_BUILD = BUILD;
     if (window.DARK_ENDYMION) {
-      window.DARK_ENDYMION.version = "3.0.0";
+      window.DARK_ENDYMION.version = "3.0.1";
       window.DARK_ENDYMION.build = BUILD;
       window.DARK_ENDYMION.teamUnion = api;
     }
