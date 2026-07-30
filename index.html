@@ -573,7 +573,7 @@
     </style>
     <meta charset="UTF-8">
     <meta charset="utf-8">
-    <title>Endymion — Multibox</title>
+    <title>Endymion V3 — Tag Team Union</title>
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v7.0.0/css/all.css" integrity="" crossorigin="anonymous">
     <link href="https://netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Oswald:300,400|Raleway:300,400,500|Ubuntu:400,500,700"
@@ -591,7 +591,7 @@
         gtag('config', 'UA-140821828-1');
     </script>
     <link type="image/x-icon" rel="shortcut icon" href="https://www.google.com/s2/favicons?domain=3rb.io">
-    <meta name="endymion-build" content="1.2.0-FULL">
+    <meta name="endymion-build" content="3.0.0-TAG-TEAM-UNION">
 </head>
 
 <body>
@@ -769,7 +769,7 @@
             </div>
             <div id="teamlist-head">
                 <i class="fa fa-bars" aria-hidden="true"></i>
-                <span data="html.huds.teamlist_title">Team players</span>
+                <span data="html.huds.teamlist_title">Tag players</span>
             </div>
             <div id="teamlist-positions"></div>
             <div id="info-tp">
@@ -886,7 +886,7 @@
             </div>
             <div class="inputs-box">
                 <div class="endymion-profile-row" style="display:flex;gap:4px;margin-bottom:4px">
-                    <input class="menu-inputs" id="tag" placeholder="Tag" style="width:54px;margin-bottom:0">
+                    <input class="menu-inputs" id="tag" placeholder="Team Tag" title="Use the same tag as your teammates" style="width:84px;margin-bottom:0">
                     <input class="menu-inputs" id="nick" placeholder="Nick 1" style="min-width:0;flex:1;margin-bottom:0">
                     <input class="menu-inputs" id="nick2" placeholder="Nick 2" style="min-width:0;flex:1;margin-bottom:0">
                 </div>
@@ -898,10 +898,17 @@
                     <input class="menu-inputs" id="skin" placeholder="Skin URL 1" style="min-width:0;flex:1;margin-bottom:0">
                     <input class="menu-inputs" id="skin2" placeholder="Skin URL 2" style="min-width:0;flex:1;margin-bottom:0">
                 </div>
-                <input class="menu-inputs" id="party-token" placeholder="Party code">
-                                <button id="create-party" title="Create a party and copy its code">Create</button>
-                <button id="join-party" title="Join a party using a code">Join</button>
-                <button id="leave-party" title="Leave the current party" style="display: none;">Leave</button>
+                <div class="endymion-v3-team-buttons">
+                    <button type="button" id="endymion-v3-map-button" title="Open the live full Team Union map (F8)">TEAM UNION (F8)</button>
+                    <button type="button" id="endymion-v3-settings-button" title="Configure the tag and Team Union transport">TAG / UNION SETUP</button>
+                </div>
+                <!-- Kept hidden so legacy game-party event bindings remain harmless. Tag is the primary Endymion V3 grouping. -->
+                <div id="endymion-v3-legacy-party-controls" hidden aria-hidden="true">
+                    <input class="menu-inputs" id="party-token" placeholder="Party code" tabindex="-1">
+                    <button id="create-party" type="button" tabindex="-1">Create</button>
+                    <button id="join-party" type="button" tabindex="-1">Join</button>
+                    <button id="leave-party" type="button" tabindex="-1">Leave</button>
+                </div>
                 <select class="menu-inputs" id="servers">
                     <option value="">Select Server ...</option>
                 </select>

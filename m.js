@@ -147,7 +147,7 @@
     btn_spectate: "Spectate",
     btn_inputs: "Inputs",
     btn_theme: "Theme",
-    input_tag1: "Tag",
+    input_tag1: "Team Tag",
     input_tag2: "Tag 2",
     input_nick: "Nick",
     input_3rbSkin: "3rb.io Skin",
@@ -182,7 +182,7 @@
   };
   const _0x342cb5 = {
     enterChatMsg: "Enter chat message...",
-    teamlist_title: "Team Players",
+    teamlist_title: "Tag Players",
     score: "Score",
     num1position: "#1 position",
     paused: "Paused",
@@ -5917,7 +5917,7 @@
       this.ws = new WebSocket(_0x2c3d4e);
       this.ws.binaryType = "arraybuffer";
       this.ws.onopen = () => {
-        console.log("Multibox sync: connected to " + this.url);
+        console.log("Endymion tag sync: connected to " + this.url);
         this.reconnectAttempt = 0;
         this.onOpen();
       };
@@ -5925,12 +5925,12 @@
         this.onMessage(_0x4a1f0e);
       };
       this.ws.onclose = (_0x2b6e4f) => {
-        console.log("Multibox sync: disconnected (code " + _0x2b6e4f.code + ")");
+        console.log("Endymion tag sync: disconnected (code " + _0x2b6e4f.code + ")");
         this.onClose();
         this.scheduleReconnect();
       };
       this.ws.onerror = (_0x1a9c7d) => {
-        console.log("Multibox sync: socket error", _0x1a9c7d);
+        console.log("Endymion tag sync: socket error", _0x1a9c7d);
         this.onError();
       };
     }
@@ -7034,7 +7034,7 @@
 
 
   // ========================================================================
-  // Endymion self-hosted full feature pack (1.2.0)
+  // Endymion V3 self-hosted full feature pack (3.0.0)
   //   ws1: playable Tab 1
   //   ws2: playable Tab 2
   //   ws3: authenticated hot standby, promoted on death/disconnect/K kill
@@ -7042,9 +7042,13 @@
   (() => {
     "use strict";
 
-    const ENDYMION_VERSION = "1.2.1";
-    const ENDYMION_BUILD = "FULL-WS3-PROMOTION-DUAL-IDENTITY-PERSISTENT-MOVE";
+    const ENDYMION_VERSION = "3.0.0";
+    const ENDYMION_BUILD = "ENDYMION-V3-TAG-FIRST-FULL-TEAM-UNION-WS3-STANDBY";
     const now = () => Date.now();
+    const AUTO_RESPAWN_KEY = "endymion-auto-promote-dead";
+    const CONTINUE_MOVEMENT_KEY = "endymion-continue-movement";
+    const isAutoRespawnEnabled = () => localStorage.getItem(AUTO_RESPAWN_KEY) !== "off";
+    const isContinueMovementEnabled = () => localStorage.getItem(CONTINUE_MOVEMENT_KEY) !== "off";
 
     const cleanOfficialSkin = value => String(value || "")
       .trim()
@@ -7404,6 +7408,7 @@
     };
 
     _0x128142.keepMoving = function endymionKeepMoving(tab) {
+      if (!isContinueMovementEnabled()) return false;
       if (!this.tabDirections) this.tabDirections = new Map();
       const alive = tab === 2 ? _0x90a1a7._isAlive2 : _0x90a1a7._isAlive;
       const center = this.getTabCenter(tab);
@@ -7412,6 +7417,25 @@
       const mapEdge = Number(_0x996564.edge || 16000);
       const distance = Math.max(64000, mapEdge * 4);
       return _0x302a2c.mouseForTab(tab, center.x + direction.x * distance, center.y + direction.y * distance);
+    };
+
+    _0x128142.stopInactivePersistentMovement = function endymionStopInactivePersistentMovement() {
+      const active = Number(_0x90a1a7.typeID || 1);
+      const inactive = active === 1 ? 2 : 1;
+      const alive = inactive === 2 ? _0x90a1a7._isAlive2 : _0x90a1a7._isAlive;
+      const center = this.getTabCenter(inactive);
+      if (alive && center) _0x302a2c.mouseForTab(inactive, center.x, center.y);
+      this.tabDirections?.delete(inactive);
+      this.lastTargets?.delete(inactive);
+      return true;
+    };
+
+    _0x128142.setContinueMovement = function endymionSetContinueMovement(enabled) {
+      const value = enabled !== false;
+      localStorage.setItem(CONTINUE_MOVEMENT_KEY, value ? "on" : "off");
+      if (!value) this.stopInactivePersistentMovement();
+      _0x18a8d1.connectionStatus?.();
+      return value;
     };
 
     _0x128142.send = function endymionSendMovement() {
@@ -7468,6 +7492,8 @@
         tab2: tabStatus(this.ws2, this.connected2, _0x90a1a7._isAlive2, this.pendingRespawns?.has(2)),
         tab3,
         standbyReady: Boolean(this.backupReady && this.ws3Open),
+        autoRespawn: isAutoRespawnEnabled(),
+        continueMovement: isContinueMovementEnabled(),
         pendingPromotions: [...(this.pendingPromotions || [])],
         ws3: this.ws3 ? { readyState: this.ws3.readyState, open: this.ws3Open } : null
       };
@@ -7479,11 +7505,67 @@
       if (!hud && document.body) {
         hud = document.createElement("div");
         hud.id = "endymion-connection-status";
-        hud.style.cssText = "position:fixed;right:10px;top:150px;z-index:2147483000;color:#f1f1f1;background:rgba(5,5,9,.88);border:1px solid rgba(255,255,255,.22);border-radius:5px;padding:5px 8px;font:11px/1.25 Arial,sans-serif;pointer-events:none;white-space:nowrap;text-shadow:0 1px 2px #000";
-        hud.title = "K or /kill promotes Standby 3 into the active tab";
+        hud.style.cssText = "position:fixed;right:10px;top:205px;z-index:2147483000;min-width:310px;max-width:calc(100vw - 20px);box-sizing:border-box;color:#f1f1f1;background:rgba(5,5,9,.9);border:1px solid rgba(255,255,255,.22);border-radius:6px;padding:6px 8px;font:11px/1.3 Arial,sans-serif;pointer-events:auto;white-space:normal;text-align:right;text-shadow:0 1px 2px #000;box-shadow:0 4px 16px rgba(0,0,0,.28)";
+        hud.title = "K or /kill manually promotes Standby 3. Automatic respawn and inactive-tab movement can be disabled below.";
+        hud.innerHTML = '<div data-endymion-role="status" style="white-space:nowrap"></div><div data-endymion-role="controls" style="display:flex;justify-content:flex-end;gap:5px;margin-top:5px;flex-wrap:wrap"><button type="button" data-endymion-action="auto-respawn"></button><button type="button" data-endymion-action="continue-movement"></button></div>';
+        const stopHudEvent = event => event.stopPropagation();
+        for (const eventName of ["pointerdown", "mousedown", "mouseup", "touchstart", "touchend", "keydown", "keyup"]) {
+          hud.addEventListener(eventName, stopHudEvent);
+        }
+        hud.addEventListener("click", event => {
+          const button = event.target?.closest?.("button[data-endymion-action]");
+          if (!button) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const action = button.dataset.endymionAction;
+          if (action === "auto-respawn") this.setAutoRespawn(!isAutoRespawnEnabled());
+          if (action === "continue-movement") _0x128142.setContinueMovement(!isContinueMovementEnabled());
+          button.blur();
+          this.connectionStatus();
+        });
         document.body.appendChild(hud);
       }
-      if (hud) hud.textContent = `Endymion ${ENDYMION_VERSION} | Tab 1: ${status.tab1} | Tab 2: ${status.tab2} | Standby 3: ${status.tab3}`;
+
+      if (hud) {
+        const leaderboard = document.getElementById("leaderboard-hud");
+        const head = document.getElementById("leaderboard-head");
+        const positions = document.getElementById("leaderboard-positions");
+        const chart = document.getElementById("leaderboard-chart");
+        let top = 205;
+        if (leaderboard) {
+          const leaderboardRect = leaderboard.getBoundingClientRect();
+          const headRect = head?.getBoundingClientRect();
+          const positionsRect = positions?.getBoundingClientRect();
+          const style = positions ? getComputedStyle(positions) : null;
+          const fontSize = Number.parseFloat(style?.fontSize) || 13;
+          const parsedLineHeight = Number.parseFloat(style?.lineHeight);
+          const rowHeight = Number.isFinite(parsedLineHeight) ? parsedLineHeight : fontSize * 1.25;
+          const paddingTop = Number.parseFloat(getComputedStyle(leaderboard).paddingTop) || 0;
+          const reservedTenRowsBottom = leaderboardRect.top + paddingTop + (headRect?.height || 29) + rowHeight * 10 + 10;
+          const chartRect = chart && getComputedStyle(chart).display !== "none" ? chart.getBoundingClientRect() : null;
+          const actualBottom = Math.max(
+            headRect?.bottom || 0,
+            positionsRect?.bottom || 0,
+            chartRect?.bottom || 0
+          ) + 8;
+          top = Math.max(reservedTenRowsBottom, actualBottom);
+          hud.style.right = Math.max(5, Math.round(innerWidth - leaderboardRect.right + 10)) + "px";
+        }
+        hud.style.top = Math.max(8, Math.round(top)) + "px";
+
+        const line = hud.querySelector('[data-endymion-role="status"]');
+        if (line) line.textContent = `Endymion ${ENDYMION_VERSION} | Tab 1: ${status.tab1} | Tab 2: ${status.tab2} | Standby 3: ${status.tab3}`;
+
+        const styleButton = (action, label, enabled) => {
+          const button = hud.querySelector(`button[data-endymion-action="${action}"]`);
+          if (!button) return;
+          button.textContent = `${label}: ${enabled ? "ON" : "OFF"}`;
+          button.setAttribute("aria-pressed", enabled ? "true" : "false");
+          button.style.cssText = `appearance:none;border:1px solid ${enabled ? "rgba(96,220,150,.75)" : "rgba(255,255,255,.25)"};border-radius:4px;padding:3px 7px;background:${enabled ? "rgba(38,130,78,.58)" : "rgba(70,70,76,.72)"};color:#fff;font:600 10px/1.2 Arial,sans-serif;cursor:pointer;text-shadow:0 1px 2px #000`;
+        };
+        styleButton("auto-respawn", "Auto respawn", status.autoRespawn);
+        styleButton("continue-movement", "Continue movement", status.continueMovement);
+      }
       return status;
     };
 
@@ -7585,12 +7667,23 @@
     _0x18a8d1.queuePromotion = function endymionQueuePromotion(tab, reason = "Playable tab died") {
       tab = Number(tab);
       if ((tab !== 1 && tab !== 2) || !this.ip) return false;
-      if (localStorage.getItem("endymion-auto-promote-dead") === "off") return false;
+      if (!isAutoRespawnEnabled()) return false;
       this.pendingPromotions.add(tab);
       this.lastPromotionReason = reason;
       setTimeout(() => this.pumpPromotionQueue(), 180);
       this.connectionStatus();
       return true;
+    };
+
+    _0x18a8d1.setAutoRespawn = function endymionSetAutoRespawn(enabled) {
+      const value = enabled !== false;
+      localStorage.setItem(AUTO_RESPAWN_KEY, value ? "on" : "off");
+      if (!value) {
+        this.pendingPromotions?.clear();
+        this.lastPromotionReason = "";
+      }
+      this.connectionStatus?.();
+      return value;
     };
 
     _0x18a8d1.pumpPromotionQueue = function endymionPumpPromotionQueue() {
@@ -7698,10 +7791,15 @@
       kill: () => _0x18a8d1.recycleActiveCell(),
       recycleActiveCell: () => _0x18a8d1.recycleActiveCell(),
       promote: tab => _0x18a8d1.promoteBackup(Number(tab), "console request"),
-      setAutoPromoteDead(enabled) {
-        localStorage.setItem("endymion-auto-promote-dead", enabled === false ? "off" : "on");
-        return enabled !== false;
-      },
+      setAutoPromoteDead: enabled => _0x18a8d1.setAutoRespawn(enabled),
+      setAutoRespawn: enabled => _0x18a8d1.setAutoRespawn(enabled),
+      toggleAutoRespawn: () => _0x18a8d1.setAutoRespawn(!isAutoRespawnEnabled()),
+      setContinueMovement: enabled => _0x128142.setContinueMovement(enabled),
+      toggleContinueMovement: () => _0x128142.setContinueMovement(!isContinueMovementEnabled()),
+      settings: () => ({
+        autoRespawn: isAutoRespawnEnabled(),
+        continueMovement: isContinueMovementEnabled()
+      }),
       profile: () => getProfile(Number(_0x50f0c6.selected || 1)),
       ws3: () => ({
         socket: _0x18a8d1.ws3,
@@ -7713,6 +7811,1633 @@
     };
 
     console.log(`[Endymion] ${ENDYMION_VERSION} loaded: ${ENDYMION_BUILD}`);
+  })();
+
+  // ========================================================================
+  // Endymion V3 — Tag-first Team Union
+  //
+  // The normal game connections remain unchanged:
+  //   ws1 = playable tab 1
+  //   ws2 = playable tab 2
+  //   ws3 = authenticated hot standby only
+  //
+  // Team Union is a separate, read-only observation layer. It serializes
+  // cells already visible to this client, shares them with same-tag peers,
+  // reconciles duplicate entity IDs, and plots the result on the minimap and
+  // a zoomable full-map canvas. Remote observations are never inserted into
+  // cells/cells2/myCells/myCells2, so they cannot alter ownership, camera,
+  // spawning, collision, or standby-promotion logic.
+  // ========================================================================
+  (() => {
+    "use strict";
+
+    const VERSION = 3;
+    const BUILD = "ENDYMION-V3-TAG-FIRST-FULL-TEAM-UNION-WS3-STANDBY";
+    const CHANNEL_NAME = "endymion-v3-team-union";
+    const KEYS = Object.freeze({
+      enabled: "endymion-v3-team-enabled",
+      shareObjects: "endymion-v3-team-share-objects",
+      minimap: "endymion-v3-team-minimap",
+      gameOverlay: "endymion-v3-team-game-overlay",
+      nativeRelay: "endymion-v3-team-native-relay",
+      relay: "endymion-v3-team-relay-url",
+      secret: "endymion-v3-team-secret",
+      installId: "endymion-v3-install-id"
+    });
+
+    const defaults = Object.freeze({
+      enabled: true,
+      shareObjects: false,
+      showOnMinimap: true,
+      showOnGameCanvas: true,
+      useNativeTagRelay: true,
+      sendIntervalMs: 260,
+      collectIntervalMs: 90,
+      aggregateIntervalMs: 90,
+      peerStaleMs: 4200,
+      entityStaleMs: 2100,
+      maxEntities: 280,
+      maxNativeBytes: 48000,
+      relayUrl: "",
+      secret: ""
+    });
+
+    const readText = (key, fallback = "") => {
+      try {
+        const value = localStorage.getItem(key);
+        return value == null ? fallback : String(value);
+      } catch (_error) {
+        return fallback;
+      }
+    };
+
+    const readBool = (key, fallback) => {
+      const value = readText(key, "");
+      if (!value) return Boolean(fallback);
+      return value !== "off" && value !== "false" && value !== "0";
+    };
+
+    const writeText = (key, value) => {
+      try { localStorage.setItem(key, String(value)); } catch (_error) {}
+    };
+
+    const bootConfig = window.ENDYMION_V3_CONFIG || {};
+    const config = {
+      ...defaults,
+      enabled: readBool(KEYS.enabled, defaults.enabled),
+      shareObjects: readBool(KEYS.shareObjects, defaults.shareObjects),
+      showOnMinimap: readBool(KEYS.minimap, defaults.showOnMinimap),
+      showOnGameCanvas: readBool(KEYS.gameOverlay, defaults.showOnGameCanvas),
+      useNativeTagRelay: readBool(KEYS.nativeRelay, defaults.useNativeTagRelay),
+      relayUrl: readText(KEYS.relay, String(bootConfig.relayUrl || defaults.relayUrl)).trim(),
+      secret: readText(KEYS.secret, String(bootConfig.secret || defaults.secret)).trim().slice(0, 96)
+    };
+
+    const randomPart = () => {
+      try {
+        if (crypto && typeof crypto.randomUUID === "function") {
+          return crypto.randomUUID().replace(/-/g, "").slice(0, 18);
+        }
+      } catch (_error) {}
+      return Math.random().toString(36).slice(2, 13) + Date.now().toString(36).slice(-6);
+    };
+
+    let installId = readText(KEYS.installId, "");
+    if (!installId) {
+      installId = randomPart();
+      writeText(KEYS.installId, installId);
+    }
+    let tabId = "";
+    try {
+      tabId = sessionStorage.getItem("endymion-v3-tab-id") || "";
+      if (!tabId) {
+        tabId = randomPart().slice(0, 9);
+        sessionStorage.setItem("endymion-v3-tab-id", tabId);
+      }
+    } catch (_error) {
+      tabId = randomPart().slice(0, 9);
+    }
+
+    const state = {
+      initialized: false,
+      peerId: `${installId}-${tabId}`,
+      room: "",
+      tag: "",
+      server: "",
+      mode: "",
+      sequence: 0,
+      channel: null,
+      relay: null,
+      relayState: "LOCAL ONLY",
+      reconnectTimer: 0,
+      reconnectAttempt: 0,
+      lastError: "",
+      lastCollectAt: 0,
+      lastSendAt: 0,
+      lastAggregateAt: 0,
+      lastRenderAt: 0,
+      lastUiAt: 0,
+      localSnapshot: null,
+      peers: new Map(),
+      remoteEnemies: new Map(),
+      remoteTeammates: new Map(),
+      teamIds: new Set(),
+      teamNames: new Set(),
+      dom: {
+        overlay: null,
+        canvas: null,
+        context: null,
+        peerSelect: null,
+        followButton: null,
+        matchButton: null,
+        overlayStatus: null,
+        settings: null,
+        relayInput: null,
+        secretInput: null,
+        tagInput: null,
+        enabledInput: null,
+        objectsInput: null,
+        minimapInput: null,
+        gameOverlayInput: null,
+        nativeRelayInput: null,
+        settingsStatus: null,
+        hudLine: null
+      },
+      view: {
+        visible: false,
+        selectedPeer: "team",
+        follow: false,
+        zoom: 1,
+        centerX: 0.5,
+        centerY: 0.5,
+        dragging: false,
+        pointerId: null,
+        lastX: 0,
+        lastY: 0
+      },
+      metrics: {
+        snapshotsSent: 0,
+        snapshotsReceived: 0,
+        snapshotsDropped: 0,
+        localEntities: 0,
+        remoteEnemies: 0,
+        remoteTeammates: 0,
+        relayBytesSent: 0,
+        relayBytesReceived: 0,
+        nativeBytesSent: 0,
+        nativeBytesReceived: 0,
+        nativePacketsSent: 0,
+        nativePacketsReceived: 0
+      }
+    };
+
+    const now = () => Date.now();
+    const finite = value => Number.isFinite(Number(value));
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value)));
+    const round6 = value => Math.round(Number(value) * 1e6) / 1e6;
+    const cleanNick = value => {
+      let nick = String(value || "").replace(/[\u0000-\u001f\u007f]/g, "");
+      const brace = nick.lastIndexOf("}");
+      if (brace >= 0) nick = nick.slice(brace + 1);
+      return nick.replace(/%\*\^/g, "").replace(/\s+/g, " ").trim().slice(0, 30);
+    };
+    const normalizeNick = value => cleanNick(value).toLocaleLowerCase();
+    const socketOpen = socket => Boolean(socket && socket.readyState === WebSocket.OPEN);
+    const formatMass = value => {
+      const mass = Math.max(0, Math.round(Number(value) || 0));
+      if (mass >= 1e6) return `${Math.round(mass / 1e5) / 10}m`;
+      if (mass >= 1000) return `${Math.round(mass / 100) / 10}k`;
+      return String(mass);
+    };
+
+    const hash32 = value => {
+      let hash = 2166136261;
+      const text = String(value || "");
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0).toString(36);
+    };
+
+    const colorToInt = color => {
+      const text = String(color || "");
+      return /^#[0-9a-f]{6}$/i.test(text) ? parseInt(text.slice(1), 16) : 0x8f98a8;
+    };
+    const intToColor = value => `#${Math.floor(clamp(value, 0, 0xffffff)).toString(16).padStart(6, "0")}`;
+    const peerColor = id => `hsl(${(parseInt(hash32(id), 36) >>> 0) % 360} 82% 62%)`;
+
+    const currentTag = () => String(_0x90a1a7?.tag || _0x14f7b2("#tag").val() || "")
+      .trim()
+      .slice(0, 32);
+    const currentServer = () => String(_0x18a8d1?.ip || "").trim();
+    const currentMode = () => String(_0x31c9b4?.gMode || "unknown").trim();
+
+    const primaryBounds = () => {
+      const left = Number(_0x996564?.left);
+      const top = Number(_0x996564?.top);
+      const right = Number(_0x996564?.right);
+      const bottom = Number(_0x996564?.bottom);
+      if (![left, top, right, bottom].every(Number.isFinite) || right <= left || bottom <= top) return null;
+      return { left, top, right, bottom, width: right - left, height: bottom - top };
+    };
+
+    const roomFor = (tag, server, mode) => {
+      const normalizedTag = String(tag || "").trim().toUpperCase();
+      if (!normalizedTag || !server) return "";
+      const secret = config.secret || normalizedTag;
+      return `e3-${VERSION}-${hash32(`${server}|${mode}|${normalizedTag}|${secret}`)}`;
+    };
+
+    const removeStaleRoomData = () => {
+      state.peers.clear();
+      state.remoteEnemies.clear();
+      state.remoteTeammates.clear();
+      state.teamIds.clear();
+      state.teamNames.clear();
+      updatePeerSelect();
+    };
+
+    const refreshIdentity = () => {
+      const tag = currentTag();
+      const server = currentServer();
+      const mode = currentMode();
+      const room = roomFor(tag, server, mode);
+      const changed = room !== state.room;
+      state.tag = tag;
+      state.server = server;
+      state.mode = mode;
+      if (!changed) return false;
+      state.room = room;
+      removeStaleRoomData();
+      if (socketOpen(state.relay) && room) sendRelay(joinPacket());
+      updateUi(true);
+      return true;
+    };
+
+    // Tag is the primary social grouping in V3. A native party can still be
+    // used by the game server itself, but it no longer overrides the relay
+    // room used for teammate list/minimap synchronization.
+    const originalComputeRoom = _0x1530af.computeRoom;
+    _0x1530af.computeRoom = function endymionV3TagRoom() {
+      const tagRoom = this.sanitize("T_", _0x90a1a7?.tag);
+      return tagRoom || this.privateRoom || originalComputeRoom.call(this);
+    };
+
+    const normalizePoint = (x, y, radius, bounds) => {
+      const maxDimension = Math.max(bounds.width, bounds.height);
+      return [
+        round6((Number(x) - bounds.left) / bounds.width),
+        round6((Number(y) - bounds.top) / bounds.height),
+        round6(Number(radius) / maxDimension)
+      ];
+    };
+
+    const localTeamIdentity = () => {
+      const names = new Set();
+      const ids = new Set();
+      const addName = value => {
+        const name = normalizeNick(value);
+        if (name) names.add(name);
+      };
+      addName(_0x90a1a7?.nick);
+      addName(_0x90a1a7?.nick2);
+      try {
+        for (const player of _0x12ac51.teamPlayers.values()) addName(player?.nick);
+      } catch (_error) {}
+      try {
+        for (const cell of _0x14d4a3.myCells.values()) ids.add(Number(cell.id));
+        for (const cell of _0x14d4a3.myCells2.values()) ids.add(Number(cell.id));
+      } catch (_error) {}
+      return { names, ids };
+    };
+
+    const cellWorldRecord = (cell, tab, bounds, identity) => {
+      if (!cell || cell.fadeStartTime || cell.isFood) return null;
+      const id = Number(cell.id);
+      const radius = Number(finite(cell.animRadius) && Number(cell.animRadius) > 0 ? cell.animRadius : cell.radius);
+      let x = Number(finite(cell.animX) ? cell.animX : cell.x);
+      let y = Number(finite(cell.animY) ? cell.animY : cell.y);
+      if (!Number.isInteger(id) || id <= 0 || !finite(x) || !finite(y) || !finite(radius) || radius <= 0) return null;
+      if (Number(tab) === 2) {
+        const shift = _0x996564.position;
+        x -= Number(shift.x || 0);
+        y -= Number(shift.y || 0);
+      }
+      const point = normalizePoint(x, y, radius, bounds);
+      if (point[0] < -0.15 || point[0] > 1.15 || point[1] < -0.15 || point[1] > 1.15) return null;
+      const nick = cleanNick(cell.nick);
+      const normalizedNick = normalizeNick(nick);
+      const own = Boolean(cell.isMine || identity.ids.has(id));
+      const teammateKnown = own || Boolean(normalizedNick && identity.names.has(normalizedNick)) || Boolean(cell.isFriend);
+      const isVirus = Boolean(cell.isVirus);
+      const isEjected = Boolean(cell.isEjected);
+      const isPlayer = !isVirus && !isEjected;
+      let flags = 0;
+      if (isVirus) flags |= 1;
+      if (isEjected) flags |= 2;
+      if (own) flags |= 4;
+      if (isPlayer) flags |= 8;
+      if (teammateKnown) flags |= 16;
+      if (Number(tab) === 2) flags |= 32;
+      return {
+        id,
+        tab: Number(tab) === 2 ? 2 : 1,
+        nx: point[0],
+        ny: point[1],
+        nr: point[2],
+        mass: Math.max(1, Math.round(radius * radius / 100)),
+        color: colorToInt(cell.colorHex),
+        flags,
+        nick,
+        updatedAt: Number(cell.lastUpdateTime || now())
+      };
+    };
+
+    const collectLocalSnapshot = () => {
+      const bounds = primaryBounds();
+      if (!bounds || !state.room || !config.enabled) return null;
+      const identity = localTeamIdentity();
+      const entities = new Map();
+      const addMap = (map, tab) => {
+        if (!(map instanceof Map)) return;
+        for (const cell of map.values()) {
+          const record = cellWorldRecord(cell, tab, bounds, identity);
+          if (!record) continue;
+          const previous = entities.get(record.id);
+          if (!previous || record.updatedAt >= previous.updatedAt || (record.flags & 4)) entities.set(record.id, record);
+        }
+      };
+      addMap(_0x14d4a3.cells, 1);
+      addMap(_0x14d4a3.cells2, 2);
+
+      const rows = [...entities.values()]
+        .filter(record => config.shareObjects || (record.flags & 8))
+        .sort((a, b) => {
+          const ownA = a.flags & 4 ? 1 : 0;
+          const ownB = b.flags & 4 ? 1 : 0;
+          const playerA = a.flags & 8 ? 1 : 0;
+          const playerB = b.flags & 8 ? 1 : 0;
+          return ownB - ownA || playerB - playerA || b.mass - a.mass;
+        })
+        .slice(0, Math.max(80, Number(config.maxEntities) || 520));
+
+      const owned = rows
+        .filter(record => record.flags & 4)
+        .map(record => [record.tab, record.id, record.nx, record.ny, record.nr, record.mass, record.nick, record.color]);
+
+      const encoded = rows.map(record => [
+        record.id,
+        record.nx,
+        record.ny,
+        record.nr,
+        record.mass,
+        record.color,
+        record.flags,
+        record.nick
+      ]);
+
+      const view = _0xddb6d6?.viewBounds;
+      let viewport = null;
+      if (view && [view.left, view.top, view.right, view.bottom].every(finite)) {
+        viewport = [
+          round6((Number(view.left) - bounds.left) / bounds.width),
+          round6((Number(view.top) - bounds.top) / bounds.height),
+          round6((Number(view.right) - bounds.left) / bounds.width),
+          round6((Number(view.bottom) - bounds.top) / bounds.height)
+        ];
+      }
+
+      const teamNames = [...identity.names].slice(0, 40);
+      state.metrics.localEntities = encoded.length;
+      return {
+        t: "s",
+        v: VERSION,
+        r: state.room,
+        p: state.peerId,
+        q: ++state.sequence,
+        ts: now(),
+        n: [cleanNick(_0x90a1a7?.nick), cleanNick(_0x90a1a7?.nick2)],
+        tn: teamNames,
+        vp: viewport,
+        o: owned,
+        e: encoded
+      };
+    };
+
+    const joinPacket = () => ({
+      t: "j",
+      v: VERSION,
+      r: state.room,
+      p: state.peerId,
+      n: [cleanNick(_0x90a1a7?.nick), cleanNick(_0x90a1a7?.nick2)],
+      tag: state.tag,
+      ts: now()
+    });
+
+    const NATIVE_PREFIX = "E3U:";
+    const NATIVE_CHAT_TYPE = 250;
+
+    const fitNativePacket = packet => {
+      if (!packet || !Array.isArray(packet.e)) return packet;
+      let candidate = packet;
+      let text = JSON.stringify(candidate);
+      if (text.length <= config.maxNativeBytes) return { packet: candidate, text };
+      let limit = Math.min(packet.e.length, 220);
+      while (limit > 20) {
+        candidate = { ...packet, e: packet.e.slice(0, limit) };
+        text = JSON.stringify(candidate);
+        if (text.length <= config.maxNativeBytes) return { packet: candidate, text };
+        limit = Math.floor(limit * 0.72);
+      }
+      candidate = { ...packet, e: packet.e.slice(0, 20) };
+      text = JSON.stringify(candidate);
+      return text.length <= config.maxNativeBytes ? { packet: candidate, text } : null;
+    };
+
+    const sendNativeTagPacket = packet => {
+      if (!config.useNativeTagRelay || !_0x1530af?.isOpen?.() || !state.tag || !state.room) return false;
+      const fitted = fitNativePacket(packet);
+      if (!fitted) return false;
+      const message = NATIVE_PREFIX + fitted.text;
+      let bytes;
+      try { bytes = unescape(encodeURIComponent(message)); } catch (_error) { return false; }
+      if (!bytes || bytes.length > config.maxNativeBytes + NATIVE_PREFIX.length * 4) return false;
+      try {
+        // Opcode 64 is the relay's existing fire-and-forget chat envelope.
+        // Type 250 is reserved by Endymion V3 and is intercepted before the
+        // normal chat renderer, so map snapshots never appear as chat text.
+        const view = _0x2d5cce.createView(3 + bytes.length);
+        view.setUint8(0, 64, true);
+        view.setUint8(1, NATIVE_CHAT_TYPE, true);
+        for (let index = bytes.length; index--;) view.setUint8(index + 2, bytes.charCodeAt(index), true);
+        view.setUint8(bytes.length + 2, 0, true);
+        _0x1530af.sendVolatile(view.buffer);
+        state.metrics.nativeBytesSent += bytes.length;
+        state.metrics.nativePacketsSent += 1;
+        return true;
+      } catch (error) {
+        state.lastError = `Built-in tag relay send failed: ${String(error?.message || error)}`;
+        return false;
+      }
+    };
+
+    const sendRelay = packet => {
+      if (!socketOpen(state.relay)) return false;
+      try {
+        const text = JSON.stringify(packet);
+        state.relay.send(text);
+        state.metrics.relayBytesSent += text.length;
+        return true;
+      } catch (error) {
+        state.lastError = String(error?.message || error);
+        return false;
+      }
+    };
+
+    const sendPacket = packet => {
+      if (!packet) return false;
+      let sent = false;
+      try {
+        state.channel?.postMessage(packet);
+        sent = true;
+      } catch (_error) {}
+      sent = sendNativeTagPacket(packet) || sent;
+      if (socketOpen(state.relay)) sent = sendRelay(packet) || sent;
+      if (sent) state.metrics.snapshotsSent += 1;
+      return sent;
+    };
+
+    const validArray = (value, max) => Array.isArray(value) && value.length <= max;
+
+    const acceptSnapshot = packet => {
+      if (!packet || packet.t !== "s" || Number(packet.v) !== VERSION) return false;
+      if (!state.room || packet.r !== state.room || packet.p === state.peerId) return false;
+      if (typeof packet.p !== "string" || packet.p.length > 90) return false;
+      if (!validArray(packet.e, 800) || !validArray(packet.o, 64)) return false;
+      const timestamp = now();
+      let peer = state.peers.get(packet.p);
+      if (peer && Number(packet.q) <= Number(peer.sequence || 0)) return false;
+      if (!peer) {
+        peer = {
+          id: packet.p,
+          color: peerColor(packet.p),
+          sequence: 0,
+          lastSeenAt: 0,
+          sourceTimestamp: 0,
+          names: [],
+          teamNames: [],
+          viewport: null,
+          owned: new Map(),
+          entities: new Map()
+        };
+        state.peers.set(packet.p, peer);
+      }
+      peer.sequence = Number(packet.q) || peer.sequence + 1;
+      peer.lastSeenAt = timestamp;
+      peer.sourceTimestamp = Number(packet.ts) || timestamp;
+      peer.names = Array.isArray(packet.n) ? packet.n.map(cleanNick).filter(Boolean).slice(0, 2) : [];
+      peer.teamNames = Array.isArray(packet.tn) ? packet.tn.map(normalizeNick).filter(Boolean).slice(0, 40) : [];
+      peer.viewport = Array.isArray(packet.vp) && packet.vp.length === 4 && packet.vp.every(finite)
+        ? packet.vp.map(Number)
+        : null;
+      peer.owned = new Map();
+      for (const row of packet.o) {
+        if (!Array.isArray(row) || row.length < 8) continue;
+        const [tab, id, nx, ny, nr, mass, nick, color] = row;
+        if (![id, nx, ny, nr, mass, color].every(finite)) continue;
+        peer.owned.set(Number(id), {
+          tab: Number(tab) === 2 ? 2 : 1,
+          id: Number(id),
+          nx: Number(nx),
+          ny: Number(ny),
+          nr: Number(nr),
+          mass: Math.max(1, Number(mass)),
+          nick: cleanNick(nick),
+          colorHex: intToColor(color),
+          updatedAt: timestamp
+        });
+      }
+      peer.entities = new Map();
+      for (const row of packet.e) {
+        if (!Array.isArray(row) || row.length < 8) continue;
+        const [id, nx, ny, nr, mass, color, flags, nick] = row;
+        if (![id, nx, ny, nr, mass, color, flags].every(finite)) continue;
+        const entityId = Number(id);
+        if (!Number.isInteger(entityId) || entityId <= 0) continue;
+        peer.entities.set(entityId, {
+          id: entityId,
+          nx: Number(nx),
+          ny: Number(ny),
+          nr: Number(nr),
+          mass: Math.max(1, Number(mass)),
+          colorHex: intToColor(color),
+          flags: Number(flags) | 0,
+          nick: cleanNick(nick),
+          updatedAt: timestamp
+        });
+      }
+      state.metrics.snapshotsReceived += 1;
+      updatePeerSelect();
+      return true;
+    };
+
+    const handleTransportPacket = raw => {
+      let packet = raw;
+      if (raw && typeof raw === "object" && "data" in raw) packet = raw.data;
+      if (typeof packet === "string") {
+        state.metrics.relayBytesReceived += packet.length;
+        try { packet = JSON.parse(packet); } catch (_error) { return false; }
+      }
+      if (!packet || typeof packet !== "object") return false;
+      if (packet.t === "welcome") {
+        state.relayState = "CONNECTED";
+        updateUi(true);
+        return true;
+      }
+      return acceptSnapshot(packet);
+    };
+
+    const originalTagChatV3 = _0x12ac51.chat;
+    _0x12ac51.chat = function endymionV3TagData(senderId, type, message, displayName) {
+      if (Number(type) === NATIVE_CHAT_TYPE && String(message || "").startsWith(NATIVE_PREFIX)) {
+        const text = String(message).slice(NATIVE_PREFIX.length);
+        state.metrics.nativeBytesReceived += text.length;
+        state.metrics.nativePacketsReceived += 1;
+        try {
+          return handleTransportPacket(JSON.parse(text));
+        } catch (_error) {
+          state.metrics.snapshotsDropped += 1;
+          return false;
+        }
+      }
+      return originalTagChatV3.apply(this, arguments);
+    };
+
+    const closeRelay = () => {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = 0;
+      const relay = state.relay;
+      state.relay = null;
+      if (relay) {
+        relay.onopen = relay.onmessage = relay.onclose = relay.onerror = null;
+        try { relay.close(1000, "Endymion V3 relay reconnect"); } catch (_error) {}
+      }
+    };
+
+    const scheduleReconnect = () => {
+      clearTimeout(state.reconnectTimer);
+      if (!config.enabled || !config.relayUrl) return;
+      const delay = Math.min(15000, 900 * Math.pow(2, state.reconnectAttempt++));
+      state.relayState = `RETRY ${Math.ceil(delay / 1000)}s`;
+      state.reconnectTimer = setTimeout(connectRelay, delay);
+      updateUi(true);
+    };
+
+    const connectRelay = () => {
+      closeRelay();
+      state.reconnectAttempt = 0;
+      const url = String(config.relayUrl || "").trim();
+      if (!url) {
+        state.relayState = "LOCAL ONLY";
+        updateUi(true);
+        return false;
+      }
+      if (location.protocol === "https:" && /^ws:\/\//i.test(url) && !/^ws:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(url)) {
+        state.lastError = "HTTPS pages require a wss:// Team Union relay.";
+        state.relayState = "INVALID URL";
+        updateUi(true);
+        return false;
+      }
+      try {
+        state.relayState = "CONNECTING";
+        const socket = new WebSocket(url);
+        state.relay = socket;
+        socket.onopen = () => {
+          if (state.relay !== socket) return;
+          state.reconnectAttempt = 0;
+          state.relayState = "CONNECTED";
+          if (state.room) sendRelay(joinPacket());
+          updateUi(true);
+        };
+        socket.onmessage = event => {
+          if (state.relay !== socket) return;
+          handleTransportPacket(event);
+        };
+        socket.onerror = () => {
+          if (state.relay !== socket) return;
+          state.lastError = "Team Union relay connection error.";
+          state.relayState = "ERROR";
+          updateUi(true);
+        };
+        socket.onclose = event => {
+          if (state.relay !== socket) return;
+          state.relay = null;
+          state.lastError = event.reason || state.lastError;
+          scheduleReconnect();
+        };
+        updateUi(true);
+        return true;
+      } catch (error) {
+        state.lastError = String(error?.message || error);
+        state.relayState = "ERROR";
+        scheduleReconnect();
+        return false;
+      }
+    };
+
+    const aggregateRemote = timestamp => {
+      const localIdentity = localTeamIdentity();
+      const teamIds = new Set(localIdentity.ids);
+      const teamNames = new Set(localIdentity.names);
+      for (const [peerId, peer] of [...state.peers]) {
+        if (timestamp - peer.lastSeenAt > config.peerStaleMs) {
+          state.peers.delete(peerId);
+          continue;
+        }
+        for (const name of peer.names) {
+          const normalized = normalizeNick(name);
+          if (normalized) teamNames.add(normalized);
+        }
+        for (const name of peer.teamNames) if (name) teamNames.add(name);
+        for (const id of peer.owned.keys()) teamIds.add(Number(id));
+      }
+
+      const groups = new Map();
+      for (const peer of state.peers.values()) {
+        if (timestamp - peer.lastSeenAt > config.peerStaleMs) continue;
+        for (const entity of peer.entities.values()) {
+          if (timestamp - entity.updatedAt > config.entityStaleMs) continue;
+          let list = groups.get(entity.id);
+          if (!list) groups.set(entity.id, list = []);
+          list.push({ ...entity, peerId: peer.id, peerColor: peer.color });
+        }
+      }
+
+      const enemies = new Map();
+      const teammates = new Map();
+      for (const [id, candidates] of groups) {
+        candidates.sort((a, b) => b.updatedAt - a.updatedAt);
+        const anchor = candidates[0];
+        const maxDistance = Math.max(0.012, anchor.nr * 4.5);
+        const coherent = candidates.filter(candidate => Math.hypot(candidate.nx - anchor.nx, candidate.ny - anchor.ny) <= maxDistance);
+        const pool = coherent.length ? coherent : [anchor];
+        let total = 0, nx = 0, ny = 0, nr = 0;
+        for (const candidate of pool) {
+          const freshness = Math.max(0.2, 1 - (timestamp - candidate.updatedAt) / config.entityStaleMs);
+          const weight = Math.max(0.00001, candidate.nr) * freshness;
+          total += weight;
+          nx += candidate.nx * weight;
+          ny += candidate.ny * weight;
+          nr += candidate.nr * weight;
+        }
+        const metadata = candidates.find(candidate => candidate.nick) || anchor;
+        const flags = candidates.reduce((value, candidate) => value | candidate.flags, 0);
+        const nick = cleanNick(metadata.nick);
+        const normalizedNick = normalizeNick(nick);
+        const isVirus = Boolean(flags & 1);
+        const isEjected = Boolean(flags & 2);
+        const isPlayer = Boolean(flags & 8);
+        const isTeam = Boolean(
+          teamIds.has(Number(id)) ||
+          (flags & 4) ||
+          (flags & 16) ||
+          (normalizedNick && teamNames.has(normalizedNick))
+        );
+        const merged = {
+          id: Number(id),
+          nx: total ? nx / total : anchor.nx,
+          ny: total ? ny / total : anchor.ny,
+          nr: total ? nr / total : anchor.nr,
+          mass: Math.max(...candidates.map(candidate => Number(candidate.mass) || 1)),
+          colorHex: metadata.colorHex,
+          nick,
+          isVirus,
+          isEjected,
+          isPlayer,
+          isTeam,
+          peerIds: [...new Set(candidates.map(candidate => candidate.peerId))],
+          updatedAt: Math.max(...candidates.map(candidate => candidate.updatedAt)),
+          conflict: candidates.some(candidate => Math.hypot(candidate.nx - anchor.nx, candidate.ny - anchor.ny) > maxDistance)
+        };
+        if (isTeam) teammates.set(Number(id), merged);
+        else if (isPlayer || config.shareObjects) enemies.set(Number(id), merged);
+      }
+      state.remoteEnemies = enemies;
+      state.remoteTeammates = teammates;
+      state.teamIds = teamIds;
+      state.teamNames = teamNames;
+      state.metrics.remoteEnemies = enemies.size;
+      state.metrics.remoteTeammates = teammates.size;
+      updatePeerSelect();
+    };
+
+    const localRows = () => {
+      const snapshot = state.localSnapshot;
+      if (!snapshot || !Array.isArray(snapshot.e)) return [];
+      return snapshot.e.map(row => ({
+        id: Number(row[0]),
+        nx: Number(row[1]),
+        ny: Number(row[2]),
+        nr: Number(row[3]),
+        mass: Number(row[4]),
+        colorHex: intToColor(row[5]),
+        flags: Number(row[6]) | 0,
+        nick: cleanNick(row[7]),
+        updatedAt: Number(snapshot.ts || now()),
+        local: true
+      }));
+    };
+
+    const isTeamRow = row => {
+      const nick = normalizeNick(row.nick);
+      return Boolean((row.flags & 4) || (row.flags & 16) || state.teamIds.has(row.id) || (nick && state.teamNames.has(nick)));
+    };
+
+    const mapPoint = (nx, ny, width, height) => {
+      const base = Math.min(width, height) * 0.9;
+      const scale = base * state.view.zoom;
+      return {
+        x: width / 2 + (Number(nx) - state.view.centerX) * scale,
+        y: height / 2 + (Number(ny) - state.view.centerY) * scale,
+        scale
+      };
+    };
+
+    const drawGrid = (ctx, width, height) => {
+      ctx.save();
+      ctx.fillStyle = "#060910";
+      ctx.fillRect(0, 0, width, height);
+      const topLeft = mapPoint(0, 0, width, height);
+      const bottomRight = mapPoint(1, 1, width, height);
+      ctx.fillStyle = "#090e18";
+      ctx.fillRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+      ctx.strokeStyle = "rgba(255,255,255,.35)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255,255,255,.12)";
+      ctx.fillStyle = "rgba(255,255,255,.12)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "600 14px Segoe UI,Arial,sans-serif";
+      for (let index = 1; index < 5; index += 1) {
+        const x = mapPoint(index / 5, 0, width, height).x;
+        const y = mapPoint(0, index / 5, width, height).y;
+        ctx.beginPath();
+        ctx.moveTo(x, topLeft.y);
+        ctx.lineTo(x, bottomRight.y);
+        ctx.moveTo(topLeft.x, y);
+        ctx.lineTo(bottomRight.x, y);
+        ctx.stroke();
+      }
+      for (let row = 0; row < 5; row += 1) {
+        for (let col = 0; col < 5; col += 1) {
+          const point = mapPoint((col + 0.5) / 5, (row + 0.5) / 5, width, height);
+          ctx.fillText(`${String.fromCharCode(65 + row)}${col + 1}`, point.x, point.y);
+        }
+      }
+      ctx.restore();
+    };
+
+    const drawViewport = (ctx, viewport, width, height, color, label) => {
+      if (!Array.isArray(viewport) || viewport.length !== 4 || !viewport.every(finite)) return;
+      const a = mapPoint(viewport[0], viewport[1], width, height);
+      const b = mapPoint(viewport[2], viewport[3], width, height);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.72;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([7, 5]);
+      ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      if (label && Math.abs(b.x - a.x) > 50) {
+        ctx.setLineDash([]);
+        ctx.fillStyle = color;
+        ctx.font = "600 10px Segoe UI,Arial,sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(label.slice(0, 18), a.x + 4, a.y + 4);
+      }
+      ctx.restore();
+    };
+
+    const drawEntity = (ctx, entity, width, height, style = {}) => {
+      const point = mapPoint(entity.nx, entity.ny, width, height);
+      const radius = clamp(Number(entity.nr) * point.scale, style.minimumRadius || 2.3, style.maximumRadius || 90);
+      if (point.x < -radius || point.y < -radius || point.x > width + radius || point.y > height + radius) return;
+      const age = Math.max(0, now() - Number(entity.updatedAt || now()));
+      const alpha = clamp(1 - age / config.entityStaleMs, 0.2, 1);
+      ctx.save();
+      ctx.globalAlpha = style.alpha == null ? alpha : style.alpha * alpha;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = entity.isVirus || (entity.flags & 1)
+        ? "#67f07b"
+        : entity.isEjected || (entity.flags & 2)
+          ? "#ffc857"
+          : (/^#[0-9a-f]{6}$/i.test(entity.colorHex) ? entity.colorHex : "#99a2b1");
+      ctx.fill();
+      ctx.strokeStyle = style.stroke || (entity.conflict ? "#ffb84d" : "#ff4e6a");
+      ctx.lineWidth = style.lineWidth || 1.6;
+      ctx.stroke();
+      if (!(entity.isVirus || entity.isEjected || (entity.flags & 1) || (entity.flags & 2)) && radius >= 7) {
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `700 ${clamp(radius * 0.55, 8, 16)}px Segoe UI,Arial,sans-serif`;
+        ctx.fillText(formatMass(entity.mass), point.x, point.y);
+      }
+      if (entity.nick && radius >= 8) {
+        ctx.fillStyle = "rgba(255,255,255,.95)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.font = "10px Segoe UI,Arial,sans-serif";
+        ctx.fillText(cleanNick(entity.nick).slice(0, 18), point.x, point.y - radius - 3);
+      }
+      ctx.restore();
+    };
+
+    const selectedPeer = () => state.view.selectedPeer === "team" ? null : state.peers.get(state.view.selectedPeer);
+
+    const matchSelectedPeerView = () => {
+      const peer = selectedPeer();
+      if (!peer) {
+        state.view.centerX = 0.5;
+        state.view.centerY = 0.5;
+        state.view.zoom = 1;
+        return;
+      }
+      const viewport = peer.viewport;
+      if (Array.isArray(viewport) && viewport.length === 4) {
+        const width = Math.max(0.02, Math.abs(viewport[2] - viewport[0]));
+        const height = Math.max(0.02, Math.abs(viewport[3] - viewport[1]));
+        state.view.centerX = clamp((viewport[0] + viewport[2]) / 2, 0, 1);
+        state.view.centerY = clamp((viewport[1] + viewport[3]) / 2, 0, 1);
+        state.view.zoom = clamp(0.82 / Math.max(width, height), 1, 18);
+        return;
+      }
+      if (peer.owned.size) {
+        let x = 0, y = 0;
+        for (const cell of peer.owned.values()) { x += cell.nx; y += cell.ny; }
+        state.view.centerX = x / peer.owned.size;
+        state.view.centerY = y / peer.owned.size;
+        state.view.zoom = 4;
+      }
+    };
+
+    const updateFollow = () => {
+      if (!state.view.follow) return;
+      const peer = selectedPeer();
+      if (!peer) return;
+      if (peer.owned.size) {
+        let x = 0, y = 0;
+        for (const cell of peer.owned.values()) { x += cell.nx; y += cell.ny; }
+        state.view.centerX += (x / peer.owned.size - state.view.centerX) * 0.16;
+        state.view.centerY += (y / peer.owned.size - state.view.centerY) * 0.16;
+      } else if (peer.viewport) {
+        const targetX = (peer.viewport[0] + peer.viewport[2]) / 2;
+        const targetY = (peer.viewport[1] + peer.viewport[3]) / 2;
+        state.view.centerX += (targetX - state.view.centerX) * 0.16;
+        state.view.centerY += (targetY - state.view.centerY) * 0.16;
+      }
+    };
+
+    const renderFullMap = timestamp => {
+      if (!state.view.visible || !state.dom.canvas || !state.dom.context) return;
+      const canvas = state.dom.canvas;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width * devicePixelRatio));
+      const height = Math.max(1, Math.round(rect.height * devicePixelRatio));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const ctx = state.dom.context;
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      const cssWidth = rect.width;
+      const cssHeight = rect.height;
+      updateFollow();
+      drawGrid(ctx, cssWidth, cssHeight);
+
+      const peer = selectedPeer();
+      const visiblePeers = peer ? [peer] : [...state.peers.values()];
+      for (const item of visiblePeers) {
+        if (timestamp - item.lastSeenAt > config.peerStaleMs) continue;
+        drawViewport(ctx, item.viewport, cssWidth, cssHeight, item.color, item.names[0] || "TAG");
+        for (const owned of item.owned.values()) {
+          drawEntity(ctx, {
+            ...owned,
+            flags: 4 | (owned.tab === 2 ? 32 : 0),
+            isVirus: false,
+            isEjected: false
+          }, cssWidth, cssHeight, { stroke: item.color, lineWidth: 2.3, minimumRadius: 3.2, alpha: 0.95 });
+        }
+      }
+
+      if (peer) {
+        for (const entity of peer.entities.values()) {
+          const team = peer.owned.has(entity.id) || Boolean(entity.flags & 16);
+          drawEntity(ctx, entity, cssWidth, cssHeight, {
+            stroke: team ? peer.color : "#ff4e6a",
+            lineWidth: team ? 2.3 : 1.6
+          });
+        }
+      } else {
+        const localMap = new Map();
+        for (const row of localRows()) localMap.set(row.id, row);
+        for (const row of localMap.values()) {
+          const own = Boolean(row.flags & 4);
+          const team = isTeamRow(row);
+          drawEntity(ctx, row, cssWidth, cssHeight, {
+            stroke: own ? (row.flags & 32 ? "#6fe8ff" : "#ff5ebc") : team ? "#64e6a2" : "#ff4e6a",
+            lineWidth: own ? 2.8 : team ? 2.2 : 1.5,
+            alpha: 1
+          });
+        }
+        for (const entity of state.remoteEnemies.values()) {
+          if (localMap.has(entity.id)) continue;
+          drawEntity(ctx, entity, cssWidth, cssHeight, { stroke: entity.conflict ? "#ffb84d" : "#ff4e6a", lineWidth: 1.7 });
+        }
+        for (const entity of state.remoteTeammates.values()) {
+          if (localMap.has(entity.id)) continue;
+          drawEntity(ctx, entity, cssWidth, cssHeight, { stroke: "#64e6a2", lineWidth: 2.2 });
+        }
+        if (state.localSnapshot?.vp) drawViewport(ctx, state.localSnapshot.vp, cssWidth, cssHeight, "#ffffff", "YOU");
+      }
+
+      if (state.dom.overlayStatus) {
+        const label = peer ? (peer.names[0] || "SELECTED TAG PLAYER") : "FULL TEAM UNION";
+        state.dom.overlayStatus.textContent = `${label} · ${state.peers.size} PEERS · ${state.remoteEnemies.size} REMOTE ENEMIES · ${Math.round(state.view.zoom * 100)}%`;
+      }
+    };
+
+    const drawMinimap = (ctx, size, timestamp) => {
+      if (!config.enabled || !config.showOnMinimap || !ctx || !size) return;
+      ctx.save();
+      for (const peer of state.peers.values()) {
+        if (timestamp - peer.lastSeenAt > config.peerStaleMs) continue;
+        if (peer.viewport) {
+          const [left, top, right, bottom] = peer.viewport;
+          ctx.strokeStyle = peer.color;
+          ctx.globalAlpha = 0.38;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(left * size, top * size, (right - left) * size, (bottom - top) * size);
+          ctx.setLineDash([]);
+        }
+        for (const cell of peer.owned.values()) {
+          const radius = clamp(cell.nr * size, 2.2, 8);
+          ctx.globalAlpha = 0.9;
+          ctx.beginPath();
+          ctx.arc(cell.nx * size, cell.ny * size, radius, 0, Math.PI * 2);
+          ctx.fillStyle = peer.color;
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,255,255,.9)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+      for (const enemy of state.remoteEnemies.values()) {
+        const radius = clamp(enemy.nr * size, 1.8, 9);
+        const age = timestamp - enemy.updatedAt;
+        ctx.globalAlpha = clamp(1 - age / config.entityStaleMs, 0.25, 0.92);
+        ctx.beginPath();
+        ctx.arc(enemy.nx * size, enemy.ny * size, radius, 0, Math.PI * 2);
+        ctx.fillStyle = enemy.isVirus ? "#67f07b" : enemy.isEjected ? "#ffc857" : enemy.colorHex;
+        ctx.fill();
+        ctx.strokeStyle = enemy.conflict ? "#ffb84d" : "#ff4e6a";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        if (enemy.isPlayer && radius >= 4.8 && enemy.mass >= 500) {
+          ctx.fillStyle = "#fff";
+          ctx.font = "700 7px Arial,sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(formatMass(enemy.mass), enemy.nx * size, enemy.ny * size);
+        }
+      }
+      ctx.restore();
+    };
+
+    const drawGameWorldOverlay = (ctx, canvas, timestamp) => {
+      if (!config.enabled || !config.showOnGameCanvas || !ctx || !canvas) return;
+      const bounds = primaryBounds();
+      if (!bounds || !_0xddb6d6 || !finite(_0xddb6d6.viewport) || Number(_0xddb6d6.viewport) <= 0) return;
+      const localIds = new Set();
+      try {
+        for (const id of _0x14d4a3.cells.keys()) localIds.add(Number(id));
+        for (const id of _0x14d4a3.cells2.keys()) localIds.add(Number(id));
+      } catch (_error) {}
+      const viewport = Number(_0xddb6d6.viewport);
+      const cameraX = Number(_0xddb6d6.x || 0);
+      const cameraY = Number(_0xddb6d6.y || 0);
+      const maxDimension = Math.max(bounds.width, bounds.height);
+      const draw = (entity, teammate) => {
+        if (localIds.has(Number(entity.id))) return;
+        const worldX = bounds.left + Number(entity.nx) * bounds.width;
+        const worldY = bounds.top + Number(entity.ny) * bounds.height;
+        const screenX = canvas.width / 2 + (worldX - cameraX) * viewport;
+        const screenY = canvas.height / 2 + (worldY - cameraY) * viewport;
+        const radius = clamp(Number(entity.nr) * maxDimension * viewport, 2.5, 260);
+        if (screenX < -radius || screenY < -radius || screenX > canvas.width + radius || screenY > canvas.height + radius) return;
+        const age = Math.max(0, timestamp - Number(entity.updatedAt || timestamp));
+        const alpha = clamp(1 - age / config.entityStaleMs, 0.12, 0.62);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = entity.isVirus ? "#67f07b" : entity.isEjected ? "#ffc857" : entity.colorHex || "#a2a9b5";
+        ctx.fill();
+        ctx.setLineDash([Math.max(3, radius * 0.12), Math.max(2, radius * 0.08)]);
+        ctx.strokeStyle = teammate ? "#64e6a2" : entity.conflict ? "#ffb84d" : "#6fe8ff";
+        ctx.lineWidth = clamp(radius * 0.08, 1.2, 4);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (entity.isPlayer && radius >= 10) {
+          ctx.globalAlpha = Math.min(0.9, alpha + 0.2);
+          ctx.fillStyle = "#fff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = `700 ${clamp(radius * 0.45, 9, 22)}px Segoe UI,Arial,sans-serif`;
+          ctx.fillText(formatMass(entity.mass), screenX, screenY);
+        }
+        ctx.restore();
+      };
+      for (const entity of state.remoteEnemies.values()) draw(entity, false);
+      for (const entity of state.remoteTeammates.values()) draw(entity, true);
+    };
+
+    const installStyle = () => {
+      if (document.getElementById("endymion-v3-style")) return;
+      const style = document.createElement("style");
+      style.id = "endymion-v3-style";
+      style.textContent = `
+        #party-token,#create-party,#join-party,#leave-party,#party-context-menu{display:none!important}
+        #tag{min-width:118px!important;flex:1!important;border-color:rgba(100,230,162,.6)!important}
+        #teamlist-head span{letter-spacing:.04em}
+        .endymion-v3-team-buttons{display:flex;gap:4px;margin-bottom:4px}
+        .endymion-v3-team-buttons button{flex:1;height:27px;border:1px solid rgba(111,232,255,.55);background:rgba(13,26,39,.92);color:#dff8ff;font:700 10px/1 Arial,sans-serif;cursor:pointer}
+        .endymion-v3-team-buttons button:hover{background:rgba(24,57,78,.95)}
+        #endymion-v3-team-map{position:fixed;inset:0;z-index:2147483400;background:rgba(2,4,8,.88);backdrop-filter:blur(3px);display:flex;flex-direction:column;color:#eaf2ff;font-family:Segoe UI,Arial,sans-serif}
+        #endymion-v3-team-map[hidden],#endymion-v3-settings[hidden]{display:none!important}
+        #endymion-v3-team-toolbar{display:flex;align-items:center;gap:7px;padding:8px 10px;background:#090d15;border-bottom:1px solid rgba(255,255,255,.16)}
+        #endymion-v3-team-toolbar strong{color:#6fe8ff;letter-spacing:.08em;white-space:nowrap}
+        #endymion-v3-team-toolbar select,#endymion-v3-team-toolbar button{height:28px;border:1px solid #36445b;background:#151d2a;color:#eef5ff;padding:0 8px;font:700 10px Segoe UI,Arial,sans-serif}
+        #endymion-v3-team-toolbar select{min-width:150px;max-width:240px}
+        #endymion-v3-team-overlay-status{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#aab9cf;font-size:11px}
+        #endymion-v3-team-canvas{display:block;flex:1;width:100%;height:calc(100vh - 46px);touch-action:none;cursor:grab}
+        #endymion-v3-team-canvas.dragging{cursor:grabbing}
+        #endymion-v3-settings{position:fixed;z-index:2147483500;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 24px));background:#0a0e16;border:1px solid rgba(111,232,255,.55);box-shadow:0 15px 60px rgba(0,0,0,.75);color:#eaf2ff;font:12px/1.35 Segoe UI,Arial,sans-serif;padding:14px;box-sizing:border-box}
+        #endymion-v3-settings h3{margin:0 0 9px;color:#6fe8ff;letter-spacing:.08em}
+        #endymion-v3-settings .e3-row{display:flex;align-items:center;gap:8px;margin:8px 0}
+        #endymion-v3-settings label{min-width:92px;color:#aab8cc}
+        #endymion-v3-settings input[type=text],#endymion-v3-settings input[type=password]{flex:1;min-width:0;background:#151c29;border:1px solid #354056;color:#fff;padding:7px;font:11px Consolas,monospace}
+        #endymion-v3-settings .e3-checks{display:grid;gap:7px;margin:10px 0;color:#d7e0ef}
+        #endymion-v3-settings .e3-checks label{display:flex;align-items:center;gap:7px;min-width:0}
+        #endymion-v3-settings .e3-actions{display:flex;gap:7px;margin-top:12px}
+        #endymion-v3-settings button{height:30px;border:1px solid #354056;background:#182335;color:#fff;padding:0 10px;font-weight:700;cursor:pointer}
+        #endymion-v3-settings button.primary{background:#176078;border-color:#53d9f5}
+        #endymion-v3-settings-status{margin-top:9px;color:#8fa0b8;font-size:10px;word-break:break-word}
+        #endymion-v3-team-hud-line{margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.13);color:#a8ecff;white-space:normal}
+      `;
+      document.head.appendChild(style);
+    };
+
+    const updatePeerSelect = () => {
+      const select = state.dom.peerSelect;
+      if (!select) return;
+      const current = state.view.selectedPeer;
+      const options = [{ value: "team", label: "TEAM UNION" }];
+      for (const peer of state.peers.values()) {
+        options.push({ value: peer.id, label: peer.names[0] || `Peer ${peer.id.slice(-5)}` });
+      }
+      const signature = options.map(option => `${option.value}:${option.label}`).join("|");
+      if (select.dataset.signature !== signature) {
+        select.dataset.signature = signature;
+        select.innerHTML = "";
+        for (const option of options) {
+          const element = document.createElement("option");
+          element.value = option.value;
+          element.textContent = option.label;
+          select.appendChild(element);
+        }
+      }
+      select.value = options.some(option => option.value === current) ? current : "team";
+      if (select.value !== current) state.view.selectedPeer = select.value;
+    };
+
+    const installOverlay = () => {
+      if (state.dom.overlay) return;
+      const overlay = document.createElement("div");
+      overlay.id = "endymion-v3-team-map";
+      overlay.hidden = true;
+      overlay.innerHTML = `
+        <div id="endymion-v3-team-toolbar">
+          <strong>ENDYMION V3 · TEAM UNION</strong>
+          <select data-e3-peer></select>
+          <button type="button" data-e3-action="fit">FIT MAP</button>
+          <button type="button" data-e3-action="match">MATCH VIEW</button>
+          <button type="button" data-e3-action="follow">FOLLOW: OFF</button>
+          <button type="button" data-e3-action="settings">SETTINGS</button>
+          <span id="endymion-v3-team-overlay-status"></span>
+          <button type="button" data-e3-action="close">CLOSE</button>
+        </div>
+        <canvas id="endymion-v3-team-canvas"></canvas>`;
+      document.body.appendChild(overlay);
+      state.dom.overlay = overlay;
+      state.dom.canvas = overlay.querySelector("canvas");
+      state.dom.context = state.dom.canvas.getContext("2d");
+      state.dom.peerSelect = overlay.querySelector("select[data-e3-peer]");
+      state.dom.followButton = overlay.querySelector('button[data-e3-action="follow"]');
+      state.dom.matchButton = overlay.querySelector('button[data-e3-action="match"]');
+      state.dom.overlayStatus = overlay.querySelector("#endymion-v3-team-overlay-status");
+
+      state.dom.peerSelect.addEventListener("change", () => {
+        state.view.selectedPeer = state.dom.peerSelect.value || "team";
+        state.view.follow = false;
+        if (state.dom.followButton) state.dom.followButton.textContent = "FOLLOW: OFF";
+      });
+      overlay.addEventListener("click", event => {
+        const button = event.target.closest("button[data-e3-action]");
+        if (!button) return;
+        const action = button.dataset.e3Action;
+        if (action === "close") setMapVisible(false);
+        if (action === "settings") setSettingsVisible(true);
+        if (action === "fit") {
+          state.view.centerX = 0.5;
+          state.view.centerY = 0.5;
+          state.view.zoom = 1;
+          state.view.follow = false;
+          if (state.dom.followButton) state.dom.followButton.textContent = "FOLLOW: OFF";
+        }
+        if (action === "match") matchSelectedPeerView();
+        if (action === "follow") {
+          state.view.follow = !state.view.follow;
+          button.textContent = `FOLLOW: ${state.view.follow ? "ON" : "OFF"}`;
+          if (state.view.follow) matchSelectedPeerView();
+        }
+      });
+
+      const canvas = state.dom.canvas;
+      canvas.addEventListener("wheel", event => {
+        event.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const before = mapPoint(0, 0, rect.width, rect.height);
+        const previousZoom = state.view.zoom;
+        const factor = Math.exp(-event.deltaY * 0.0015);
+        state.view.zoom = clamp(previousZoom * factor, 1, 24);
+        if (state.view.zoom === previousZoom) return;
+        const base = Math.min(rect.width, rect.height) * 0.9;
+        const nx = state.view.centerX + (event.clientX - rect.left - rect.width / 2) / (base * previousZoom);
+        const ny = state.view.centerY + (event.clientY - rect.top - rect.height / 2) / (base * previousZoom);
+        state.view.centerX = clamp(nx - (event.clientX - rect.left - rect.width / 2) / (base * state.view.zoom), -0.3, 1.3);
+        state.view.centerY = clamp(ny - (event.clientY - rect.top - rect.height / 2) / (base * state.view.zoom), -0.3, 1.3);
+        state.view.follow = false;
+        if (state.dom.followButton) state.dom.followButton.textContent = "FOLLOW: OFF";
+        void before;
+      }, { passive: false });
+      canvas.addEventListener("pointerdown", event => {
+        state.view.dragging = true;
+        state.view.pointerId = event.pointerId;
+        state.view.lastX = event.clientX;
+        state.view.lastY = event.clientY;
+        state.view.follow = false;
+        canvas.classList.add("dragging");
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener("pointermove", event => {
+        if (!state.view.dragging || state.view.pointerId !== event.pointerId) return;
+        const rect = canvas.getBoundingClientRect();
+        const base = Math.min(rect.width, rect.height) * 0.9 * state.view.zoom;
+        state.view.centerX = clamp(state.view.centerX - (event.clientX - state.view.lastX) / base, -0.3, 1.3);
+        state.view.centerY = clamp(state.view.centerY - (event.clientY - state.view.lastY) / base, -0.3, 1.3);
+        state.view.lastX = event.clientX;
+        state.view.lastY = event.clientY;
+      });
+      const finishDrag = event => {
+        if (state.view.pointerId !== event.pointerId) return;
+        state.view.dragging = false;
+        state.view.pointerId = null;
+        canvas.classList.remove("dragging");
+        try { canvas.releasePointerCapture(event.pointerId); } catch (_error) {}
+      };
+      canvas.addEventListener("pointerup", finishDrag);
+      canvas.addEventListener("pointercancel", finishDrag);
+      canvas.addEventListener("dblclick", () => {
+        state.view.centerX = 0.5;
+        state.view.centerY = 0.5;
+        state.view.zoom = 1;
+      });
+      updatePeerSelect();
+    };
+
+    const applySettings = () => {
+      const tag = String(state.dom.tagInput?.value || "").trim().slice(0, 32);
+      config.enabled = Boolean(state.dom.enabledInput?.checked);
+      config.shareObjects = Boolean(state.dom.objectsInput?.checked);
+      config.showOnMinimap = Boolean(state.dom.minimapInput?.checked);
+      config.showOnGameCanvas = Boolean(state.dom.gameOverlayInput?.checked);
+      config.useNativeTagRelay = Boolean(state.dom.nativeRelayInput?.checked);
+      config.relayUrl = String(state.dom.relayInput?.value || "").trim();
+      config.secret = String(state.dom.secretInput?.value || "").trim().slice(0, 96);
+      writeText(KEYS.enabled, config.enabled ? "on" : "off");
+      writeText(KEYS.shareObjects, config.shareObjects ? "on" : "off");
+      writeText(KEYS.minimap, config.showOnMinimap ? "on" : "off");
+      writeText(KEYS.gameOverlay, config.showOnGameCanvas ? "on" : "off");
+      writeText(KEYS.nativeRelay, config.useNativeTagRelay ? "on" : "off");
+      writeText(KEYS.relay, config.relayUrl);
+      writeText(KEYS.secret, config.secret);
+      if (tag !== currentTag()) {
+        _0x14f7b2("#tag").val(tag);
+        _0x50f0c6.setTag(tag);
+      }
+      refreshIdentity();
+      connectRelay();
+      updateUi(true);
+      return snapshot();
+    };
+
+    const installSettings = () => {
+      if (state.dom.settings) return;
+      const settings = document.createElement("div");
+      settings.id = "endymion-v3-settings";
+      settings.hidden = true;
+      settings.innerHTML = `
+        <h3>ENDYMION V3 · TAG TEAM UNION</h3>
+        <div class="e3-row"><label>Team tag</label><input type="text" data-e3-input="tag" maxlength="32" placeholder="Same tag for every teammate"></div>
+        <div class="e3-row"><label>Relay URL</label><input type="text" data-e3-input="relay" placeholder="Optional: wss://your-relay.example/ws"></div>
+        <div class="e3-row"><label>Team secret</label><input type="password" data-e3-input="secret" maxlength="96" placeholder="Optional private room secret"></div>
+        <div class="e3-checks">
+          <label><input type="checkbox" data-e3-input="enabled"> Share my visible map with this tag</label>
+          <label><input type="checkbox" data-e3-input="native-relay"> Use the built-in tag relay automatically</label>
+          <label><input type="checkbox" data-e3-input="objects"> Share viruses and ejected mass</label>
+          <label><input type="checkbox" data-e3-input="minimap"> Plot remote enemies on the minimap</label>
+          <label><input type="checkbox" data-e3-input="game-overlay"> Overlay remote tag cells on the game view</label>
+        </div>
+        <div class="e3-actions">
+          <button type="button" class="primary" data-e3-action="save">SAVE + CONNECT</button>
+          <button type="button" data-e3-action="open-map">OPEN TEAM MAP</button>
+          <button type="button" data-e3-action="clear">CLEAR REMOTE</button>
+          <button type="button" data-e3-action="close">CLOSE</button>
+        </div>
+        <div id="endymion-v3-settings-status"></div>`;
+      document.body.appendChild(settings);
+      state.dom.settings = settings;
+      state.dom.tagInput = settings.querySelector('[data-e3-input="tag"]');
+      state.dom.relayInput = settings.querySelector('[data-e3-input="relay"]');
+      state.dom.secretInput = settings.querySelector('[data-e3-input="secret"]');
+      state.dom.enabledInput = settings.querySelector('[data-e3-input="enabled"]');
+      state.dom.objectsInput = settings.querySelector('[data-e3-input="objects"]');
+      state.dom.minimapInput = settings.querySelector('[data-e3-input="minimap"]');
+      state.dom.gameOverlayInput = settings.querySelector('[data-e3-input="game-overlay"]');
+      state.dom.nativeRelayInput = settings.querySelector('[data-e3-input="native-relay"]');
+      state.dom.settingsStatus = settings.querySelector("#endymion-v3-settings-status");
+      settings.addEventListener("click", event => {
+        const button = event.target.closest("button[data-e3-action]");
+        if (!button) return;
+        const action = button.dataset.e3Action;
+        if (action === "save") applySettings();
+        if (action === "close") setSettingsVisible(false);
+        if (action === "open-map") {
+          setSettingsVisible(false);
+          setMapVisible(true);
+        }
+        if (action === "clear") {
+          removeStaleRoomData();
+          updateUi(true);
+        }
+      });
+    };
+
+    const setMapVisible = visible => {
+      installOverlay();
+      state.view.visible = Boolean(visible);
+      state.dom.overlay.hidden = !state.view.visible;
+      if (state.view.visible) renderFullMap(now());
+      return state.view.visible;
+    };
+
+    const setSettingsVisible = visible => {
+      installSettings();
+      state.dom.settings.hidden = !visible;
+      if (visible) {
+        state.dom.tagInput.value = currentTag();
+        state.dom.relayInput.value = config.relayUrl;
+        state.dom.secretInput.value = config.secret;
+        state.dom.enabledInput.checked = config.enabled;
+        state.dom.objectsInput.checked = config.shareObjects;
+        state.dom.minimapInput.checked = config.showOnMinimap;
+        state.dom.gameOverlayInput.checked = config.showOnGameCanvas;
+        state.dom.nativeRelayInput.checked = config.useNativeTagRelay;
+      }
+      updateUi(true);
+      return !state.dom.settings.hidden;
+    };
+
+    const installMainMenu = () => {
+      const tag = document.getElementById("tag");
+      if (tag) {
+        tag.placeholder = "Team Tag";
+        tag.title = "Players using the same tag share minimap positions and Team Union observations through the built-in tag relay.";
+      }
+      const title = document.querySelector("#teamlist-head span");
+      if (title) title.textContent = "Tag Players";
+      const partyMenu = document.getElementById("party-context-menu");
+      if (partyMenu) partyMenu.hidden = true;
+
+      let row = document.querySelector(".endymion-v3-team-buttons");
+      if (!row) {
+        row = document.createElement("div");
+        row.className = "endymion-v3-team-buttons";
+        row.innerHTML = '<button type="button" id="endymion-v3-map-button">TEAM UNION (F8)</button><button type="button" id="endymion-v3-settings-button">TAG / RELAY SETUP</button>';
+        const server = document.getElementById("servers");
+        if (server?.parentNode) server.parentNode.insertBefore(row, server);
+      }
+      const mapButton = document.getElementById("endymion-v3-map-button");
+      const settingsButton = document.getElementById("endymion-v3-settings-button");
+      if (mapButton && !mapButton.dataset.bound) {
+        mapButton.dataset.bound = "1";
+        mapButton.addEventListener("click", () => setMapVisible(true));
+      }
+      if (settingsButton && !settingsButton.dataset.bound) {
+        settingsButton.dataset.bound = "1";
+        settingsButton.addEventListener("click", () => setSettingsVisible(true));
+      }
+    };
+
+    const installHudLine = () => {
+      const hud = document.getElementById("endymion-connection-status");
+      if (!hud) return;
+      let line = document.getElementById("endymion-v3-team-hud-line");
+      if (!line) {
+        line = document.createElement("div");
+        line.id = "endymion-v3-team-hud-line";
+        line.title = "Click to open Team Union settings.";
+        line.style.cursor = "pointer";
+        line.addEventListener("click", () => setSettingsVisible(true));
+        hud.appendChild(line);
+      }
+      state.dom.hudLine = line;
+    };
+
+    const transportLabel = () => {
+      const parts = [];
+      if (config.useNativeTagRelay && _0x1530af?.isOpen?.() && state.tag) parts.push("TAG RELAY");
+      if (config.relayUrl) parts.push(state.relayState === "CONNECTED" ? "EXTERNAL RELAY" : state.relayState);
+      if (!parts.length) parts.push("LOCAL ONLY");
+      return parts.join(" + ");
+    };
+
+    const summary = () => ({
+      version: VERSION,
+      build: BUILD,
+      enabled: config.enabled,
+      tag: state.tag,
+      room: state.room,
+      server: state.server,
+      relayUrl: config.relayUrl,
+      transport: transportLabel(),
+      builtInTagRelay: config.useNativeTagRelay,
+      gameOverlay: config.showOnGameCanvas,
+      peers: state.peers.size,
+      localEntities: state.metrics.localEntities,
+      remoteEnemies: state.remoteEnemies.size,
+      remoteTeammates: state.remoteTeammates.size,
+      ws3Role: "hot-standby-only",
+      lastError: state.lastError
+    });
+
+    const snapshot = () => ({
+      ...summary(),
+      peerId: state.peerId,
+      selectedPeer: state.view.selectedPeer,
+      follow: state.view.follow,
+      metrics: { ...state.metrics },
+      peers: [...state.peers.values()].map(peer => ({
+        id: peer.id,
+        names: peer.names.slice(),
+        lastSeenAt: peer.lastSeenAt,
+        owned: peer.owned.size,
+        entities: peer.entities.size,
+        viewport: peer.viewport ? peer.viewport.slice() : null
+      }))
+    });
+
+    const updateUi = force => {
+      const timestamp = now();
+      if (!force && timestamp - state.lastUiAt < 250) return;
+      state.lastUiAt = timestamp;
+      installStyle();
+      installMainMenu();
+      installOverlay();
+      installSettings();
+      installHudLine();
+      updatePeerSelect();
+      const data = summary();
+      if (state.dom.hudLine) {
+        state.dom.hudLine.textContent = state.room
+          ? `Tag ${state.tag} · Team Union ${data.transport} · ${data.peers} peers · ${data.remoteEnemies} remote enemies`
+          : "Tag Team Union: enter a Team Tag to start";
+        state.dom.hudLine.style.color = /TAG RELAY|EXTERNAL RELAY|LOCAL ONLY/.test(data.transport) ? "#a8ecff" : "#ffcf72";
+      }
+      if (state.dom.settingsStatus) {
+        state.dom.settingsStatus.textContent = state.room
+          ? `Room ${state.room} · ${data.transport} · ${data.peers} peers · ${data.remoteEnemies} enemies. The built-in tag relay is automatic; the optional wss:// relay is a fallback for servers that filter V3 packets.`
+          : "Enter a tag and connect to a game server. Same-tag teammates are joined automatically.";
+      }
+    };
+
+    const tick = () => {
+      if (!state.initialized) return;
+      const timestamp = now();
+      refreshIdentity();
+      if (timestamp - state.lastCollectAt >= config.collectIntervalMs) {
+        state.lastCollectAt = timestamp;
+        state.localSnapshot = collectLocalSnapshot();
+      }
+      if (config.enabled && state.localSnapshot && timestamp - state.lastSendAt >= config.sendIntervalMs) {
+        state.lastSendAt = timestamp;
+        sendPacket(state.localSnapshot);
+      }
+      if (timestamp - state.lastAggregateAt >= config.aggregateIntervalMs) {
+        state.lastAggregateAt = timestamp;
+        aggregateRemote(timestamp);
+      }
+      if (state.view.visible && timestamp - state.lastRenderAt >= 33) {
+        state.lastRenderAt = timestamp;
+        renderFullMap(timestamp);
+      }
+      updateUi(false);
+    };
+
+    const init = () => {
+      if (state.initialized) return;
+      state.initialized = true;
+      installStyle();
+      installMainMenu();
+      installOverlay();
+      installSettings();
+      try {
+        state.channel = new BroadcastChannel(CHANNEL_NAME);
+        state.channel.onmessage = event => handleTransportPacket(event);
+      } catch (error) {
+        state.lastError = `BroadcastChannel unavailable: ${String(error?.message || error)}`;
+      }
+      refreshIdentity();
+      if (_0x1530af?.updateRoom) _0x1530af.updateRoom();
+      if (config.relayUrl) connectRelay();
+      document.addEventListener("keydown", event => {
+        if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
+        if (event.target?.matches?.("input,textarea,select,[contenteditable='true']")) return;
+        if (event.code === "F8") {
+          event.preventDefault();
+          event.stopPropagation();
+          setMapVisible(!state.view.visible);
+        }
+      }, true);
+      window.addEventListener("beforeunload", () => {
+        closeRelay();
+        try { state.channel?.close(); } catch (_error) {}
+      }, { once: true });
+      updateUi(true);
+    };
+
+    const originalCoreInitV3 = _0xb45f1b.init;
+    _0xb45f1b.init = function endymionV3CoreInit() {
+      const result = originalCoreInitV3.apply(this, arguments);
+      init();
+      return result;
+    };
+
+    const originalCoreRunV3 = _0xb45f1b.run;
+    _0xb45f1b.run = function endymionV3CoreRun() {
+      const result = originalCoreRunV3.apply(this, arguments);
+      tick();
+      return result;
+    };
+
+    const originalMinimapRunV3 = _0x5cda9b.run;
+    _0x5cda9b.run = function endymionV3MinimapRun() {
+      const result = originalMinimapRunV3.apply(this, arguments);
+      try { drawMinimap(this.ctx, this.size, now()); } catch (error) { state.lastError = String(error?.message || error); }
+      return result;
+    };
+
+    const originalRendererRunV3 = _0x386cbc.run;
+    _0x386cbc.run = function endymionV3RendererRun() {
+      const result = originalRendererRunV3.apply(this, arguments);
+      try { drawGameWorldOverlay(this.ctx, this.canvas, now()); } catch (error) { state.lastError = String(error?.message || error); }
+      return result;
+    };
+
+    const api = {
+      version: VERSION,
+      build: BUILD,
+      config,
+      state,
+      init,
+      tick,
+      summary,
+      snapshot,
+      openMap: () => setMapVisible(true),
+      closeMap: () => setMapVisible(false),
+      toggleMap: () => setMapVisible(!state.view.visible),
+      openSettings: () => setSettingsVisible(true),
+      reconnect: connectRelay,
+      clearRemote: () => { removeStaleRoomData(); updateUi(true); },
+      setTag: tag => {
+        const value = String(tag || "").trim().slice(0, 32);
+        _0x14f7b2("#tag").val(value);
+        _0x50f0c6.setTag(value);
+        refreshIdentity();
+        return summary();
+      },
+      setRelay: url => {
+        config.relayUrl = String(url || "").trim();
+        writeText(KEYS.relay, config.relayUrl);
+        connectRelay();
+        return summary();
+      },
+      setSecret: secret => {
+        config.secret = String(secret || "").trim().slice(0, 96);
+        writeText(KEYS.secret, config.secret);
+        refreshIdentity();
+        removeStaleRoomData();
+        if (socketOpen(state.relay) && state.room) sendRelay(joinPacket());
+        return summary();
+      },
+      setEnabled: enabled => {
+        config.enabled = enabled !== false;
+        writeText(KEYS.enabled, config.enabled ? "on" : "off");
+        return summary();
+      },
+      setMinimap: enabled => {
+        config.showOnMinimap = enabled !== false;
+        writeText(KEYS.minimap, config.showOnMinimap ? "on" : "off");
+        return summary();
+      },
+      setGameOverlay: enabled => {
+        config.showOnGameCanvas = enabled !== false;
+        writeText(KEYS.gameOverlay, config.showOnGameCanvas ? "on" : "off");
+        return summary();
+      },
+      setNativeTagRelay: enabled => {
+        config.useNativeTagRelay = enabled !== false;
+        writeText(KEYS.nativeRelay, config.useNativeTagRelay ? "on" : "off");
+        return summary();
+      }
+    };
+
+    window.ENDYMION_V3 = api;
+    window.ENDYMION_TEAM_UNION = api;
+    window.ENDYMION_BUILD = BUILD;
+    if (window.DARK_ENDYMION) {
+      window.DARK_ENDYMION.version = "3.0.0";
+      window.DARK_ENDYMION.build = BUILD;
+      window.DARK_ENDYMION.teamUnion = api;
+    }
+
+    console.log(`[Endymion V3] ${BUILD} loaded`);
   })();
 
   _0x1c478d.onload = () => (
