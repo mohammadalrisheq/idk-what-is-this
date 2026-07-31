@@ -7043,7 +7043,7 @@
     "use strict";
 
     const ENDYMION_VERSION = "3.0.1";
-    const ENDYMION_BUILD = "ENDYMION-V3.0.1-TAG-UNION-GHOST-GUARD-WS3-STANDBY";
+    const ENDYMION_BUILD = "ENDYMION-V3.2.1-CONTROL-CENTER-WS3-SCOUT-TEAM-VISION-MASTER-STARTUP-GUARD";
     const now = () => Date.now();
     const AUTO_RESPAWN_KEY = "endymion-auto-promote-dead";
     const CONTINUE_MOVEMENT_KEY = "endymion-continue-movement";
@@ -7923,7 +7923,7 @@
     "use strict";
 
     const VERSION = 3;
-    const BUILD = "ENDYMION-V3.0.1-TAG-UNION-GHOST-GUARD-WS3-STANDBY";
+    const BUILD = "ENDYMION-V3.2.1-CONTROL-CENTER-WS3-SCOUT-TEAM-VISION-MASTER-STARTUP-GUARD";
     const CHANNEL_NAME = "endymion-v3-team-union";
     const KEYS = Object.freeze({
       enabled: "endymion-v3-team-enabled",
@@ -8279,6 +8279,22 @@
       addMap(_0x14d4a3.cells, 1);
       addMap(_0x14d4a3.cells2, 2);
 
+      // Optional WS3 observer contribution. The helper returns already
+      // normalized, read-only records and never inserts them into native
+      // cells/cells2 ownership stores.
+      try {
+        const observerRows = window.ENDYMION_WS3_HELPER?.getTeamVisionRecords?.(bounds, identity) || [];
+        for (const record of observerRows) {
+          if (!record || !finite(record.id)) continue;
+          const previous = entities.get(Number(record.id));
+          if (!previous || Number(record.updatedAt || 0) >= Number(previous.updatedAt || 0)) {
+            entities.set(Number(record.id), record);
+          }
+        }
+      } catch (error) {
+        state.lastError = `WS3 observer snapshot: ${String(error?.message || error)}`;
+      }
+
       const rows = [...entities.values()]
         .filter(record => config.shareObjects || (record.flags & 8))
         .sort((a, b) => {
@@ -8407,7 +8423,7 @@
     };
 
     const sendPacket = packet => {
-      if (!packet) return false;
+      if (!config.enabled || !packet) return false;
       let sent = false;
       try {
         // BroadcastChannel is retained for same-browser testing. It is local
@@ -8430,6 +8446,7 @@
     const validArray = (value, max) => Array.isArray(value) && value.length <= max;
 
     const acceptSnapshot = packet => {
+      if (!config.enabled) return false;
       if (!packet || packet.t !== "s" || Number(packet.v) !== VERSION) return false;
       if (!state.room || packet.r !== state.room || packet.p === state.peerId) return false;
       if (typeof packet.p !== "string" || packet.p.length > 90) return false;
@@ -8502,6 +8519,7 @@
     };
 
     const handleTransportPacket = raw => {
+      if (!config.enabled) return false;
       let packet = raw;
       if (raw && typeof raw === "object" && "data" in raw) packet = raw.data;
       if (typeof packet === "string") {
@@ -8544,6 +8562,49 @@
       }
     };
 
+    const closeLocalChannel = () => {
+      const channel = state.channel;
+      state.channel = null;
+      if (channel) {
+        try { channel.onmessage = null; } catch (_error) {}
+        try { channel.close(); } catch (_error) {}
+      }
+    };
+
+    const openLocalChannel = () => {
+      if (!config.enabled || state.channel) return false;
+      try {
+        state.channel = new BroadcastChannel(CHANNEL_NAME);
+        state.channel.onmessage = event => handleTransportPacket(event);
+        return true;
+      } catch (error) {
+        state.lastError = `BroadcastChannel unavailable: ${String(error?.message || error)}`;
+        return false;
+      }
+    };
+
+    const setTeamVisionEnabled = enabled => {
+      const value = enabled !== false;
+      config.enabled = value;
+      writeText(KEYS.enabled, value ? "on" : "off");
+      if (!value) {
+        state.localSnapshot = null;
+        state.relayState = "DISABLED";
+        closeRelay();
+        closeLocalChannel();
+        removeStaleRoomData();
+        state.view.visible = false;
+        if (state.dom.overlay) state.dom.overlay.hidden = true;
+      } else {
+        openLocalChannel();
+        state.relayState = config.relayUrl ? "CONNECTING" : "LOCAL ONLY";
+        refreshIdentity();
+        if (config.relayUrl) connectRelay();
+      }
+      updateUi(true);
+      return value;
+    };
+
     const scheduleReconnect = () => {
       clearTimeout(state.reconnectTimer);
       if (!config.enabled || !config.relayUrl) return;
@@ -8554,6 +8615,12 @@
     };
 
     const connectRelay = () => {
+      if (!config.enabled) {
+        closeRelay();
+        state.relayState = "DISABLED";
+        updateUi(true);
+        return false;
+      }
       closeRelay();
       state.reconnectAttempt = 0;
       const url = String(config.relayUrl || "").trim();
@@ -9259,14 +9326,13 @@
 
     const applySettings = () => {
       const tag = String(state.dom.tagInput?.value || "").trim().slice(0, 32);
-      config.enabled = Boolean(state.dom.enabledInput?.checked);
+      const enabled = Boolean(state.dom.enabledInput?.checked);
       config.shareObjects = Boolean(state.dom.objectsInput?.checked);
       config.showOnMinimap = Boolean(state.dom.minimapInput?.checked);
       config.showOnGameCanvas = Boolean(state.dom.gameOverlayInput?.checked);
       config.useNativeTagRelay = Boolean(state.dom.nativeRelayInput?.checked);
       config.relayUrl = String(state.dom.relayInput?.value || "").trim();
       config.secret = String(state.dom.secretInput?.value || "").trim().slice(0, 96);
-      writeText(KEYS.enabled, config.enabled ? "on" : "off");
       writeText(KEYS.shareObjects, config.shareObjects ? "on" : "off");
       writeText(KEYS.minimap, config.showOnMinimap ? "on" : "off");
       writeText(KEYS.gameOverlay, config.showOnGameCanvas ? "on" : "off");
@@ -9278,7 +9344,7 @@
         _0x50f0c6.setTag(tag);
       }
       refreshIdentity();
-      connectRelay();
+      setTeamVisionEnabled(enabled);
       updateUi(true);
       return snapshot();
     };
@@ -9294,7 +9360,7 @@
         <div class="e3-row"><label>Relay URL</label><input type="text" data-e3-input="relay" placeholder="Optional: wss://your-relay.example/ws"></div>
         <div class="e3-row"><label>Team secret</label><input type="password" data-e3-input="secret" maxlength="96" placeholder="Optional private room secret"></div>
         <div class="e3-checks">
-          <label><input type="checkbox" data-e3-input="enabled"> Share my visible map with this tag</label>
+          <label><input type="checkbox" data-e3-input="enabled"> Enable Team Vision completely (sharing, receiving, maps and overlays)</label>
           <label><input type="checkbox" data-e3-input="native-relay"> Use the built-in tag relay automatically</label>
           <label><input type="checkbox" data-e3-input="objects"> Share viruses and ejected mass</label>
           <label><input type="checkbox" data-e3-input="minimap"> Plot remote enemies on the minimap</label>
@@ -9337,6 +9403,12 @@
 
     const setMapVisible = visible => {
       installOverlay();
+      if (!config.enabled && visible) {
+        state.view.visible = false;
+        state.dom.overlay.hidden = true;
+        updateUi(true);
+        return false;
+      }
       state.view.visible = Boolean(visible);
       state.dom.overlay.hidden = !state.view.visible;
       if (state.view.visible) renderFullMap(now());
@@ -9407,6 +9479,7 @@
     };
 
     const transportLabel = () => {
+      if (!config.enabled) return "OFF";
       if (config.relayUrl && state.relayState === "CONNECTED") return "EXTERNAL RELAY";
       if (config.useNativeTagRelay && _0x1530af?.isOpen?.() && state.tag) return "TAG RELAY";
       if (config.relayUrl && state.relayState !== "CONNECTED") return state.relayState;
@@ -9428,7 +9501,7 @@
       localEntities: state.metrics.localEntities,
       remoteEnemies: state.remoteEnemies.size,
       remoteTeammates: state.remoteTeammates.size,
-      ws3Role: "hot-standby-only",
+      ws3Role: window.ENDYMION_WS3_HELPER?.config?.mode || "standby",
       lastError: state.lastError
     });
 
@@ -9460,15 +9533,19 @@
       updatePeerSelect();
       const data = summary();
       if (state.dom.hudLine) {
-        state.dom.hudLine.textContent = state.room
-          ? `Tag ${state.tag} · Team Union ${data.transport} · ${data.peers} peers · ${data.remoteEnemies} remote enemies`
-          : "Tag Team Union: enter a Team Tag to start";
-        state.dom.hudLine.style.color = /TAG RELAY|EXTERNAL RELAY|LOCAL ONLY/.test(data.transport) ? "#a8ecff" : "#ffcf72";
+        state.dom.hudLine.textContent = !config.enabled
+          ? "Team Vision: OFF · native tag teammates remain enabled"
+          : state.room
+            ? `Tag ${state.tag} · Team Union ${data.transport} · ${data.peers} peers · ${data.remoteEnemies} remote enemies`
+            : "Tag Team Union: enter a Team Tag to start";
+        state.dom.hudLine.style.color = !config.enabled ? "#93a2b8" : /TAG RELAY|EXTERNAL RELAY|LOCAL ONLY/.test(data.transport) ? "#a8ecff" : "#ffcf72";
       }
       if (state.dom.settingsStatus) {
-        state.dom.settingsStatus.textContent = state.room
-          ? `Room ${state.room} · ${data.transport} · ${data.peers} peers · ${data.remoteEnemies} enemies. The built-in tag relay is automatic; the optional wss:// relay is a fallback for servers that filter V3 packets.`
-          : "Enter a tag and connect to a game server. Same-tag teammates are joined automatically.";
+        state.dom.settingsStatus.textContent = !config.enabled
+          ? "Team Vision is completely disabled: no collection, sending, receiving, map rendering or remote storage. Native tag-player positions still work."
+          : state.room
+            ? `Room ${state.room} · ${data.transport} · ${data.peers} peers · ${data.remoteEnemies} enemies. The built-in tag relay is automatic; the optional wss:// relay is a fallback for servers that filter V3 packets.`
+            : "Enter a tag and connect to a game server. Same-tag teammates are joined automatically.";
       }
     };
 
@@ -9476,6 +9553,11 @@
       if (!state.initialized) return;
       const timestamp = now();
       refreshIdentity();
+      if (!config.enabled) {
+        if (state.view.visible) setMapVisible(false);
+        updateUi(false);
+        return;
+      }
       if (timestamp - state.lastCollectAt >= config.collectIntervalMs) {
         state.lastCollectAt = timestamp;
         state.localSnapshot = collectLocalSnapshot();
@@ -9502,18 +9584,20 @@
       installMainMenu();
       installOverlay();
       installSettings();
-      try {
-        state.channel = new BroadcastChannel(CHANNEL_NAME);
-        state.channel.onmessage = event => handleTransportPacket(event);
-      } catch (error) {
-        state.lastError = `BroadcastChannel unavailable: ${String(error?.message || error)}`;
-      }
+      if (config.enabled) openLocalChannel();
+      else state.relayState = "DISABLED";
       refreshIdentity();
       if (_0x1530af?.updateRoom) _0x1530af.updateRoom();
-      if (config.relayUrl) connectRelay();
+      if (config.enabled && config.relayUrl) connectRelay();
       document.addEventListener("keydown", event => {
         if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
         if (event.target?.matches?.("input,textarea,select,[contenteditable='true']")) return;
+        if (event.code === "F9") {
+          event.preventDefault();
+          event.stopPropagation();
+          setTeamVisionEnabled(!config.enabled);
+          return;
+        }
         if (event.code === "F8") {
           event.preventDefault();
           event.stopPropagation();
@@ -9592,8 +9676,12 @@
         return summary();
       },
       setEnabled: enabled => {
-        config.enabled = enabled !== false;
-        writeText(KEYS.enabled, config.enabled ? "on" : "off");
+        setTeamVisionEnabled(enabled);
+        return summary();
+      },
+      setShareObjects: enabled => {
+        config.shareObjects = enabled !== false;
+        writeText(KEYS.shareObjects, config.shareObjects ? "on" : "off");
         return summary();
       },
       setMinimap: enabled => {
@@ -9617,7 +9705,7 @@
     window.ENDYMION_TEAM_UNION = api;
     window.ENDYMION_BUILD = BUILD;
     if (window.DARK_ENDYMION) {
-      window.DARK_ENDYMION.version = "3.0.1";
+      window.DARK_ENDYMION.version = "3.2.1";
       window.DARK_ENDYMION.build = BUILD;
       window.DARK_ENDYMION.teamUnion = api;
     }
@@ -9625,9 +9713,746 @@
     console.log(`[Endymion V3] ${BUILD} loaded`);
   })();
 
+  // ========================================================================
+  // Endymion V3.2 — WS3 dual-role scout
+  //
+  // Modes:
+  //   standby  = authenticated hot spare only
+  //   tracker  = follows the server's normal #1 spectator target and draws it
+  //   observer = tracker + parses nearby spectator entities for Team Vision
+  //
+  // No free-spectate scanning is used. This intentionally follows the normal
+  // server-selected #1 point, which avoids the coordinate drift seen in older
+  // scan-route observer experiments. Promotion always has priority.
+  // ========================================================================
+  (() => {
+    "use strict";
+
+    const KEYS = Object.freeze({
+      mode: "endymion-v3-ws3-role",
+      marker: "endymion-v3-ws3-no1-marker",
+      shareObserver: "endymion-v3-ws3-share-observer"
+    });
+    const VALID_MODES = new Set(["standby", "tracker", "observer"]);
+    const read = (key, fallback) => {
+      try { const value = localStorage.getItem(key); return value == null ? fallback : String(value); }
+      catch (_error) { return fallback; }
+    };
+    const write = (key, value) => { try { localStorage.setItem(key, String(value)); } catch (_error) {} };
+    const readBool = (key, fallback) => {
+      const value = read(key, "");
+      return value ? value !== "off" && value !== "false" && value !== "0" : Boolean(fallback);
+    };
+    const storedMode = read(KEYS.mode, "tracker").toLowerCase();
+    const config = {
+      mode: VALID_MODES.has(storedMode) ? storedMode : "tracker",
+      showNo1Marker: readBool(KEYS.marker, true),
+      shareObserver: readBool(KEYS.shareObserver, true),
+      targetStaleMs: 3200,
+      entityStaleMs: 1250,
+      maxObserverEntities: 180
+    };
+    const makeWorld = () => ({
+      bounds: null,
+      cells: new Map(),
+      target: null,
+      lastPacketAt: 0,
+      lastWorldAt: 0,
+      lastBorderAt: 0
+    });
+    const state = {
+      initialized: false,
+      socket: null,
+      generation: 0,
+      attachedAt: 0,
+      spectatorRequested: false,
+      authorized: false,
+      retryAt: 0,
+      retries: 0,
+      status: "WAITING",
+      detail: "Waiting for authenticated Standby 3",
+      lastError: "",
+      world: makeWorld(),
+      hud: null,
+      lastHudAt: 0
+    };
+    const now = () => Date.now();
+    const finite = value => Number.isFinite(Number(value));
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value)));
+    const socketOpen = socket => Boolean(socket && socket.readyState === WebSocket.OPEN);
+    const standbyReady = () => Boolean(_0x18a8d1?.backupReady && _0x18a8d1?.ws3Open && _0x18a8d1?.ws3);
+    const primaryBounds = () => {
+      const left = Number(_0x996564?.left), top = Number(_0x996564?.top);
+      const right = Number(_0x996564?.right), bottom = Number(_0x996564?.bottom);
+      if (![left, top, right, bottom].every(Number.isFinite) || right <= left || bottom <= top) return null;
+      return { left, top, right, bottom, width: right - left, height: bottom - top };
+    };
+    const colorToInt = color => /^#[0-9a-f]{6}$/i.test(String(color || "")) ? parseInt(String(color).slice(1), 16) : 0x8f98a8;
+    const cleanNick = value => {
+      let nick = String(value || "").replace(/[\u0000-\u001f\u007f]/g, "");
+      const brace = nick.lastIndexOf("}");
+      if (brace >= 0) nick = nick.slice(brace + 1);
+      return nick.replace(/%\*\^/g, "").replace(/\s+/g, " ").trim().slice(0, 30);
+    };
+    const normalizeNick = value => cleanNick(value).toLocaleLowerCase();
+    const modeLabel = () => config.mode === "standby" ? "Hot Standby" : config.mode === "observer" ? "#1 Observer + Standby" : "#1 Tracker + Standby";
+    const sectorFor = (nx, ny) => {
+      const x = clamp(Math.floor(clamp(nx, 0, 0.999999) * 5), 0, 4);
+      const y = clamp(Math.floor(clamp(ny, 0, 0.999999) * 5), 0, 4);
+      return `${String.fromCharCode(65 + x)}${y + 1}`;
+    };
+    const resetWorld = () => { state.world = makeWorld(); };
+    const setStatus = (status, detail = "") => {
+      state.status = status;
+      state.detail = detail;
+      updateHud(true);
+    };
+    const restoreStandbyHandler = socket => {
+      if (!socket || socket !== _0x18a8d1.ws3 || !socketOpen(socket)) return;
+      socket.onmessage = event => _0x18a8d1.onMessage(event, 3);
+    };
+    const detach = (reason = "Detached", restore = true) => {
+      state.generation += 1;
+      const socket = state.socket;
+      state.socket = null;
+      if (restore) restoreStandbyHandler(socket);
+      state.spectatorRequested = false;
+      state.authorized = false;
+      state.retryAt = 0;
+      state.retries = 0;
+      resetWorld();
+      setStatus(config.mode === "standby" ? "STANDBY" : "WAITING", reason);
+      return socket;
+    };
+    const sendRaw = payload => {
+      const socket = state.socket;
+      if (!socketOpen(socket) || socket !== _0x18a8d1.ws3) return false;
+      try { socket.send(payload); return true; }
+      catch (error) { state.lastError = String(error?.message || error); return false; }
+    };
+    const requestSpectator = () => {
+      if (config.mode === "standby" || !socketOpen(state.socket)) return false;
+      const sent = sendRaw(new Uint8Array([1]).buffer);
+      state.spectatorRequested = sent || state.spectatorRequested;
+      state.retryAt = now() + 1900;
+      state.retries += 1;
+      setStatus(sent ? "TRACKING" : "WAITING", sent ? "Normal server #1 spectator target requested" : "Spectator request could not be sent");
+      return sent;
+    };
+    const attach = () => {
+      if (config.mode === "standby") return false;
+      const socket = _0x18a8d1.ws3;
+      if (!standbyReady() || !socketOpen(socket)) {
+        setStatus("WAITING", "Waiting for authenticated Standby 3");
+        return false;
+      }
+      if (state.socket === socket) return true;
+      if (state.socket && state.socket !== socket) detach("Standby 3 was replaced", false);
+      state.generation += 1;
+      const generation = state.generation;
+      state.socket = socket;
+      state.attachedAt = now();
+      state.spectatorRequested = false;
+      state.authorized = false;
+      state.retries = 0;
+      state.retryAt = now() + 220;
+      resetWorld();
+      socket.onmessage = event => onMessage(event, generation);
+      setStatus("ATTACHED", `${modeLabel()} attached; promotion remains available`);
+      return true;
+    };
+    const toArrayBuffer = async payload => {
+      if (payload instanceof ArrayBuffer) return payload;
+      if (ArrayBuffer.isView(payload)) return payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength);
+      if (payload instanceof Blob) return payload.arrayBuffer();
+      return null;
+    };
+    const safeString = reader => { try { return reader.readEscapedUTF8string(); } catch (_error) { return ""; } };
+    const parseBorder = reader => {
+      const left = Number(reader.readFloat64()), top = Number(reader.readFloat64());
+      const right = Number(reader.readFloat64()), bottom = Number(reader.readFloat64());
+      if (![left, top, right, bottom].every(Number.isFinite) || right <= left || bottom <= top) return;
+      state.world.bounds = { left, top, right, bottom, width: right - left, height: bottom - top };
+      state.world.lastBorderAt = now();
+    };
+    const updateTarget = (x, y, zoom) => {
+      const bounds = state.world.bounds || primaryBounds();
+      if (!bounds || ![x, y].every(Number.isFinite)) return;
+      const rawNx = (x - bounds.left) / bounds.width;
+      const rawNy = (y - bounds.top) / bounds.height;
+      if (!Number.isFinite(rawNx) || !Number.isFinite(rawNy) || rawNx < -0.25 || rawNx > 1.25 || rawNy < -0.25 || rawNy > 1.25) return;
+      const previous = state.world.target;
+      const alpha = previous ? 0.42 : 1;
+      const nx = previous ? previous.nx + (rawNx - previous.nx) * alpha : rawNx;
+      const ny = previous ? previous.ny + (rawNy - previous.ny) * alpha : rawNy;
+      state.world.target = {
+        x: Number(x), y: Number(y), zoom: Number(zoom) || 1,
+        nx: clamp(nx, 0, 1), ny: clamp(ny, 0, 1),
+        rawNx, rawNy, sector: sectorFor(rawNx, rawNy), updatedAt: now()
+      };
+      state.authorized = true;
+      setStatus("ACTIVE", `#1 target ${state.world.target.sector}`);
+    };
+    const parseWorldUpdate = reader => {
+      const timestamp = now();
+      const world = state.world;
+      const eatCount = reader.readUInt16();
+      for (let index = 0; index < eatCount; index += 1) {
+        reader.readUInt32();
+        const victimId = reader.readUInt32();
+        world.cells.delete(victimId);
+      }
+      while (!reader.endOfBuffer()) {
+        const id = reader.readUInt32();
+        if (id === 0) break;
+        const x = reader.readInt32(), y = reader.readInt32(), radius = reader.readUInt16();
+        const flags = reader.readUInt8();
+        const cell = world.cells.get(id) || {
+          id, x, y, radius, colorHex: "#777777", nick: "", bNick: "", skin: "",
+          isVirus: false, isEjected: false, isFood: false, updatedAt: timestamp
+        };
+        cell.x = x; cell.y = y; cell.radius = radius;
+        cell.isVirus = Boolean(flags & 1);
+        cell.isEjected = Boolean(flags & 32);
+        if (flags & 64) reader.readInt32();
+        if (flags & 2) {
+          const r = reader.readUInt8(), g = reader.readUInt8(), b = reader.readUInt8();
+          cell.colorHex = `#${(16777216 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        }
+        if (flags & 4) cell.skin = safeString(reader);
+        if (flags & 8) cell.nick = safeString(reader);
+        if (flags & 128) cell.bNick = safeString(reader);
+        cell.isFood = !cell.isVirus && !cell.isEjected && !cell.nick && !cell.bNick && radius < 100;
+        cell.updatedAt = timestamp;
+        world.cells.set(id, cell);
+      }
+      const removeCount = reader.readUInt16();
+      for (let index = 0; index < removeCount; index += 1) world.cells.delete(reader.readUInt32());
+      world.lastWorldAt = timestamp;
+      state.authorized = true;
+    };
+    const parsePacket = buffer => {
+      if (!buffer || buffer.byteLength < 1) return;
+      const reader = new _0x4c265b(new DataView(buffer));
+      let opcode;
+      try { opcode = reader.readUInt8(); } catch (_error) { return; }
+      state.world.lastPacketAt = now();
+      try {
+        if (opcode === 17) {
+          updateTarget(reader.readFloat32(), reader.readFloat32(), reader.readFloat32());
+        } else if (opcode === 65) {
+          parseBorder(reader);
+        } else if (opcode === 16) {
+          if (config.mode === "observer") parseWorldUpdate(reader);
+          state.authorized = true;
+        } else if (opcode === 18) {
+          state.world.cells.clear();
+        }
+      } catch (error) {
+        state.lastError = `WS3 packet ${opcode}: ${String(error?.message || error)}`;
+      }
+    };
+    const onMessage = async (event, generation) => {
+      const buffer = await toArrayBuffer(event.data);
+      if (!buffer || generation !== state.generation || state.socket !== _0x18a8d1.ws3) return;
+      parsePacket(buffer);
+    };
+    const expire = timestamp => {
+      if (state.world.target && timestamp - state.world.target.updatedAt > config.targetStaleMs) state.world.target = null;
+      for (const [id, cell] of state.world.cells) {
+        if (timestamp - Number(cell.updatedAt || 0) > config.entityStaleMs) state.world.cells.delete(id);
+      }
+    };
+    const installHud = () => {
+      const host = document.getElementById("endymion-connection-status");
+      if (!host) return;
+      let line = document.getElementById("endymion-ws3-scout-hud-line");
+      if (!line) {
+        line = document.createElement("div");
+        line.id = "endymion-ws3-scout-hud-line";
+        line.style.cssText = "margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,.12);color:#ffd166;white-space:normal;cursor:pointer";
+        line.title = "Click to cycle WS3 role";
+        line.addEventListener("click", () => cycleMode());
+        host.appendChild(line);
+      }
+      state.hud = line;
+    };
+    const updateHud = force => {
+      const timestamp = now();
+      if (!force && timestamp - state.lastHudAt < 500) return;
+      state.lastHudAt = timestamp;
+      installHud();
+      if (!state.hud) return;
+      const target = state.world.target;
+      const age = target ? timestamp - target.updatedAt : Infinity;
+      state.hud.textContent = config.mode === "standby"
+        ? "WS3: Hot Standby only · #1 tracking OFF"
+        : target && age <= config.targetStaleMs
+          ? `WS3: ${modeLabel()} · #1 ${target.sector} · ${Math.round(age)}ms`
+          : `WS3: ${modeLabel()} · searching for #1`;
+      state.hud.style.color = config.mode === "standby" ? "#93a2b8" : target ? "#ffd166" : "#ffbd6b";
+    };
+    const drawNo1 = (ctx, size, timestamp) => {
+      if (!config.showNo1Marker || config.mode === "standby" || !ctx || !size) return;
+      const target = state.world.target;
+      if (!target || timestamp - target.updatedAt > config.targetStaleMs) return;
+      const x = clamp(target.nx, 0, 1) * size;
+      const y = clamp(target.ny, 0, 1) * size;
+      const pulse = 5 + 2.5 * (0.5 + 0.5 * Math.sin(timestamp / 180));
+      ctx.save();
+      ctx.globalAlpha = 0.96;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ffd166";
+      ctx.fillStyle = "rgba(255,209,102,.22)";
+      ctx.beginPath(); ctx.arc(x, y, pulse, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.font = "900 10px Segoe UI,Arial,sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      ctx.fillText("#1", x, y - pulse - 2);
+      ctx.font = "700 8px Segoe UI,Arial,sans-serif";
+      ctx.fillStyle = "#ffd166";
+      ctx.fillText(target.sector, x, y - pulse - 12);
+      ctx.restore();
+    };
+    const getTeamVisionRecords = (_primary, identity) => {
+      if (config.mode !== "observer" || !config.shareObserver || !state.authorized) return [];
+      const bounds = state.world.bounds || primaryBounds();
+      if (!bounds) return [];
+      const timestamp = now();
+      const rows = [];
+      for (const cell of state.world.cells.values()) {
+        if (timestamp - Number(cell.updatedAt || 0) > config.entityStaleMs || cell.isFood) continue;
+        const nx = (Number(cell.x) - bounds.left) / bounds.width;
+        const ny = (Number(cell.y) - bounds.top) / bounds.height;
+        const nr = Number(cell.radius) / Math.max(bounds.width, bounds.height);
+        if (![nx, ny, nr].every(Number.isFinite) || nx < -0.15 || nx > 1.15 || ny < -0.15 || ny > 1.15) continue;
+        const nick = cleanNick(cell.nick || cell.bNick);
+        let flags = 0;
+        if (cell.isVirus) flags |= 1;
+        if (cell.isEjected) flags |= 2;
+        if (!cell.isVirus && !cell.isEjected) flags |= 8;
+        if (nick && identity?.names?.has?.(normalizeNick(nick))) flags |= 16;
+        rows.push({
+          id: Number(cell.id), tab: 3, nx, ny, nr,
+          mass: Math.max(1, Math.round(Number(cell.radius) * Number(cell.radius) / 100)),
+          color: colorToInt(cell.colorHex), flags, nick, updatedAt: Number(cell.updatedAt || timestamp)
+        });
+      }
+      return rows.sort((a, b) => b.mass - a.mass).slice(0, Math.max(30, Number(config.maxObserverEntities) || 180));
+    };
+    const setMode = mode => {
+      const next = String(mode || "").toLowerCase();
+      if (!VALID_MODES.has(next)) return config.mode;
+      if (next === config.mode) return config.mode;
+      detach(`Switching WS3 role to ${next}`, true);
+      config.mode = next;
+      write(KEYS.mode, next);
+      if (next !== "observer") state.world.cells.clear();
+      updateHud(true);
+      return config.mode;
+    };
+    const cycleMode = () => {
+      const order = ["standby", "tracker", "observer"];
+      return setMode(order[(order.indexOf(config.mode) + 1) % order.length]);
+    };
+    const setShowNo1 = enabled => {
+      config.showNo1Marker = enabled !== false;
+      write(KEYS.marker, config.showNo1Marker ? "on" : "off");
+      return config.showNo1Marker;
+    };
+    const setShareObserver = enabled => {
+      config.shareObserver = enabled !== false;
+      write(KEYS.shareObserver, config.shareObserver ? "on" : "off");
+      return config.shareObserver;
+    };
+    const reattach = () => {
+      detach("Manual WS3 scout reattach", true);
+      if (config.mode !== "standby") setTimeout(attach, 120);
+      return snapshot();
+    };
+    const tick = () => {
+      if (!state.initialized) return;
+      const timestamp = now();
+      expire(timestamp);
+      if (config.mode === "standby") {
+        if (state.socket) detach("Hot standby mode", true);
+        updateHud(false);
+        return;
+      }
+      if (state.socket && (state.socket !== _0x18a8d1.ws3 || !socketOpen(state.socket))) detach("Standby 3 replaced or disconnected", false);
+      if (!state.socket && standbyReady()) attach();
+      if (state.socket && !state.spectatorRequested && timestamp >= state.retryAt) requestSpectator();
+      else if (state.socket && !state.authorized && state.retries < 3 && timestamp >= state.retryAt) requestSpectator();
+      updateHud(false);
+    };
+    const snapshot = () => ({
+      mode: config.mode,
+      label: modeLabel(),
+      showNo1Marker: config.showNo1Marker,
+      shareObserver: config.shareObserver,
+      attached: Boolean(state.socket && state.socket === _0x18a8d1.ws3 && socketOpen(state.socket)),
+      standbyReady: standbyReady(),
+      authorized: state.authorized,
+      status: state.status,
+      detail: state.detail,
+      target: state.world.target ? { ...state.world.target, ageMs: now() - state.world.target.updatedAt } : null,
+      observerEntities: state.world.cells.size,
+      lastError: state.lastError
+    });
+    const init = () => {
+      if (state.initialized) return;
+      state.initialized = true;
+      installHud();
+      document.addEventListener("keydown", event => {
+        if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
+        if (event.target?.matches?.("input,textarea,select,[contenteditable='true']")) return;
+        if (event.code === "F7") {
+          event.preventDefault();
+          event.stopPropagation();
+          reattach();
+        }
+      }, true);
+      window.addEventListener("beforeunload", () => detach("Page unload", false), { once: true });
+      updateHud(true);
+    };
+    const previousCoreInit = _0xb45f1b.init;
+    _0xb45f1b.init = function endymionWs3ScoutInit() {
+      const result = previousCoreInit.apply(this, arguments);
+      init();
+      return result;
+    };
+    const previousCoreRun = _0xb45f1b.run;
+    _0xb45f1b.run = function endymionWs3ScoutRun() {
+      const result = previousCoreRun.apply(this, arguments);
+      tick();
+      return result;
+    };
+    const previousMinimapRun = _0x5cda9b.run;
+    _0x5cda9b.run = function endymionWs3ScoutMinimapRun() {
+      const result = previousMinimapRun.apply(this, arguments);
+      try { drawNo1(this.ctx, this.size, now()); } catch (error) { state.lastError = String(error?.message || error); }
+      return result;
+    };
+    const api = { config, state, init, tick, setMode, cycleMode, setShowNo1, setShareObserver, reattach, snapshot, getTeamVisionRecords };
+    window.ENDYMION_WS3_HELPER = api;
+    window.ENDYMION_NO1_TRACKER = api;
+    if (window.DARK_ENDYMION) window.DARK_ENDYMION.ws3Helper = api;
+    console.log(`[Endymion V3.2.1] WS3 scout loaded in ${config.mode} mode`);
+  })();
+
+
+  // ========================================================================
+  // Endymion V3.2 Control Center
+  // A clean Endymion-only interface. Legacy panels stay hidden in the DOM so
+  // the original event bindings continue to operate, but unused account/social
+  // controls and unrelated settings are not surfaced.
+  // ========================================================================
+  (() => {
+    "use strict";
+    const state = { initialized: false, root: null, tab: "play", timer: 0 };
+    const one = selector => document.querySelector(selector);
+    const all = selector => [...document.querySelectorAll(selector)];
+    const setOriginalValue = (selector, value) => {
+      const element = one(selector);
+      if (!element) return;
+      const next = value == null ? "" : String(value);
+      if (String(element.value ?? "") === next) return;
+      _0x14f7b2(element).val(next).trigger("input").trigger("change").trigger("blur");
+    };
+    const checked = name => Boolean(state.root?.querySelector(`[data-ecc-check="${name}"]`)?.checked);
+    const value = name => String(state.root?.querySelector(`[data-ecc-field="${name}"]`)?.value || "");
+    const setSwitch = (name, enabled) => {
+      all(`#endymion-control-center [data-ecc-check="${name}"]`).forEach(input => {
+        input.checked = Boolean(enabled);
+      });
+    };
+    const setField = (name, next) => {
+      const input = state.root?.querySelector(`[data-ecc-field="${name}"]`);
+      if (input && document.activeElement !== input) input.value = next == null ? "" : String(next);
+    };
+    const copyOptions = () => {
+      const original = one("#servers");
+      const mirror = state.root?.querySelector('[data-ecc-field="server"]');
+      if (!original || !mirror) return;
+      const signature = [...original.options].map(option => `${option.value}:${option.textContent}`).join("|");
+      if (mirror.dataset.signature !== signature) {
+        mirror.dataset.signature = signature;
+        mirror.innerHTML = original.innerHTML;
+      }
+      if (document.activeElement !== mirror) mirror.value = original.value;
+    };
+    const syncProfilesFromOriginal = () => {
+      setField("tag", one("#tag")?.value || "");
+      setField("nick1", one("#nick")?.value || "");
+      setField("nick2", one("#nick2")?.value || "");
+      setField("arb1", one("#arbSkin")?.value || "");
+      setField("arb2", one("#arbSkin2")?.value || "");
+      setField("skin1", one("#skin")?.value || "");
+      setField("skin2", one("#skin2")?.value || "");
+      copyOptions();
+    };
+    const applyProfiles = () => {
+      setOriginalValue("#tag", value("tag").trim().slice(0, 32));
+      setOriginalValue("#nick", value("nick1"));
+      setOriginalValue("#nick2", value("nick2"));
+      setOriginalValue("#arbSkin", value("arb1"));
+      setOriginalValue("#arbSkin2", value("arb2"));
+      setOriginalValue("#skin", value("skin1"));
+      setOriginalValue("#skin2", value("skin2"));
+      const server = value("server");
+      const originalServer = one("#servers");
+      if (originalServer && originalServer.value !== server) {
+        _0x14f7b2(originalServer).val(server).trigger("change");
+      }
+    };
+    const saveTeam = () => {
+      applyProfiles();
+      const tv = window.ENDYMION_V3;
+      tv?.setRelay?.(value("relay").trim());
+      tv?.setSecret?.(value("secret").trim());
+      tv?.setNativeTagRelay?.(checked("nativeRelay"));
+      tv?.setShareObjects?.(checked("shareObjects"));
+      tv?.setMinimap?.(checked("teamMinimap"));
+      tv?.setGameOverlay?.(checked("teamOverlay"));
+      tv?.setEnabled?.(checked("teamVision"));
+      const ws3 = window.ENDYMION_WS3_HELPER;
+      ws3?.setMode?.(value("ws3Mode"));
+      ws3?.setShowNo1?.(checked("no1Marker"));
+      ws3?.setShareObserver?.(checked("shareWs3"));
+      updateStatus(true);
+    };
+    const saveSettings = () => {
+      window.DARK_ENDYMION?.setAutoRespawn?.(checked("autoRespawn"));
+      window.DARK_ENDYMION?.setContinueMovement?.(checked("continueMovement"));
+      const setGame = (name, value) => { try { _0x2cc0f3.saveSettings(name, value); } catch (_error) {} };
+      setGame("autoZoom", checked("autoZoom") ? "on" : "off");
+      setGame("cellNick", checked("cellNick") ? "on" : "off");
+      setGame("cellMass", value("cellMass"));
+      setGame("urlSkins", checked("urlSkins") ? "on" : "off");
+      setGame("arbSkins", checked("arbSkins") ? "on" : "off");
+      setGame("food", value("foodMode"));
+      updateStatus(true);
+    };
+    const switchTab = tab => {
+      state.tab = tab;
+      all("#endymion-control-center [data-ecc-tab]").forEach(button => button.classList.toggle("active", button.dataset.eccTab === tab));
+      all("#endymion-control-center [data-ecc-panel]").forEach(panel => panel.hidden = panel.dataset.eccPanel !== tab);
+    };
+    const updateStatus = force => {
+      if (!state.root) return;
+      syncProfilesFromOriginal();
+      const dark = window.DARK_ENDYMION?.settings?.() || {};
+      const tv = window.ENDYMION_V3?.summary?.() || {};
+      const scout = window.ENDYMION_WS3_HELPER?.snapshot?.() || {};
+      setSwitch("autoRespawn", dark.autoRespawn !== false);
+      setSwitch("continueMovement", dark.continueMovement !== false);
+      setSwitch("teamVision", tv.enabled !== false);
+      setSwitch("nativeRelay", window.ENDYMION_V3?.config?.useNativeTagRelay !== false);
+      setSwitch("shareObjects", Boolean(window.ENDYMION_V3?.config?.shareObjects));
+      setSwitch("teamMinimap", window.ENDYMION_V3?.config?.showOnMinimap !== false);
+      setSwitch("teamOverlay", Boolean(window.ENDYMION_V3?.config?.showOnGameCanvas));
+      setSwitch("no1Marker", scout.showNo1Marker !== false);
+      setSwitch("shareWs3", scout.shareObserver !== false);
+      setField("relay", window.ENDYMION_V3?.config?.relayUrl || "");
+      setField("secret", window.ENDYMION_V3?.config?.secret || "");
+      setField("ws3Mode", scout.mode || "tracker");
+      setSwitch("autoZoom", _0x2cc0f3?.autoZoom === "on");
+      setSwitch("cellNick", _0x2cc0f3?.cellNick !== "off");
+      setField("cellMass", _0x2cc0f3?.cellMass || "shortened");
+      setSwitch("urlSkins", _0x2cc0f3?.urlSkins !== "off");
+      setSwitch("arbSkins", _0x2cc0f3?.arbSkins !== "off");
+      setField("foodMode", _0x2cc0f3?.food || "monoColored");
+      const status = state.root.querySelector("[data-ecc-status]");
+      if (status) {
+        const target = scout.target ? `#1 ${scout.target.sector} · ${Math.round(scout.target.ageMs)}ms` : "#1 searching";
+        status.innerHTML = `<span>${tv.enabled === false ? "Team Vision OFF" : `${tv.transport || "LOCAL"} · ${tv.peers || 0} peers · ${tv.remoteEnemies || 0} enemies`}</span><span>${scout.label || "WS3 Standby"} · ${target}</span>`;
+      }
+      const badge = state.root.querySelector("[data-ecc-live]");
+      if (badge) badge.textContent = tv.enabled === false ? "PRIVATE" : tv.peers > 0 ? "TEAM LIVE" : "READY";
+      void force;
+    };
+    const installStyle = () => {
+      if (document.getElementById("endymion-control-center-style")) return;
+      const style = document.createElement("style");
+      style.id = "endymion-control-center-style";
+      style.textContent = `
+        body.endymion-control-center-active #player-data,
+        body.endymion-control-center-active #settings,
+        body.endymion-control-center-active #inputs,
+        body.endymion-control-center-active #theme{display:none!important}
+        #menu-overlay{background:radial-gradient(circle at 50% 42%,rgba(10,75,92,.38),rgba(2,18,27,.88) 54%,rgba(1,8,14,.96))!important}
+        #endymion-control-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 28px));height:min(560px,calc(100vh - 34px));display:grid;grid-template-rows:62px 1fr 66px;background:linear-gradient(145deg,rgba(9,27,37,.98),rgba(4,15,24,.98));border:1px solid rgba(100,221,255,.22);border-radius:18px;box-shadow:0 28px 90px rgba(0,0,0,.72),inset 0 1px rgba(255,255,255,.04);overflow:hidden;color:#e7f4fb;font-family:Inter,Segoe UI,Arial,sans-serif;z-index:50}
+        #endymion-control-center *{box-sizing:border-box}
+        .ecc-top{display:flex;align-items:center;gap:6px;padding:0 22px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(4,17,25,.78)}
+        .ecc-brand{display:flex;align-items:center;gap:11px;margin-right:auto}.ecc-logo{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#1e86ff,#14d4d2);box-shadow:0 0 24px rgba(33,177,255,.24);font:900 20px/1 Oswald,sans-serif}.ecc-brand strong{display:block;letter-spacing:.16em;font-size:15px}.ecc-brand small{display:block;color:#6f8c9b;font-size:9px;letter-spacing:.16em;margin-top:2px}
+        .ecc-top button,.ecc-bottom button{border:0;background:transparent;color:#708a98;cursor:pointer;font-weight:700}.ecc-top button{height:62px;padding:0 15px;border-bottom:2px solid transparent}.ecc-top button.active{color:#fff;border-bottom-color:#2f9cff}.ecc-top button:hover,.ecc-bottom button:hover{color:#bfefff}
+        .ecc-live{margin-left:10px;padding:6px 9px;border:1px solid rgba(73,220,178,.35);border-radius:999px;color:#69e5bd;background:rgba(44,178,142,.09);font-size:9px;font-weight:900;letter-spacing:.1em}
+        .ecc-content{padding:20px 24px;overflow:auto}.ecc-panel[hidden]{display:none!important}.ecc-panel{height:100%}
+        .ecc-hero{display:grid;grid-template-columns:1.08fr .92fr;gap:14px;height:100%}.ecc-card{background:linear-gradient(145deg,rgba(13,42,53,.9),rgba(6,24,34,.86));border:1px solid rgba(124,218,238,.11);border-radius:14px;padding:17px;box-shadow:inset 0 1px rgba(255,255,255,.025)}.ecc-card h2,.ecc-card h3{margin:0 0 4px}.ecc-card h2{font-size:20px}.ecc-card h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase}.ecc-muted{color:#6f8a99;font-size:11px;line-height:1.45}
+        .ecc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ecc-grid.one{grid-template-columns:1fr}.ecc-field{display:grid;gap:5px}.ecc-field.full{grid-column:1/-1}.ecc-field label{color:#7f9aa8;font-size:10px;font-weight:700}.ecc-field input,.ecc-field select{width:100%;height:38px;border:1px solid rgba(120,205,226,.14);border-radius:8px;background:#061a24;color:#e9f7ff;padding:0 11px;outline:0;font:11px Segoe UI,Arial,sans-serif}.ecc-field input:focus,.ecc-field select:focus{border-color:#2c9cff;box-shadow:0 0 0 2px rgba(44,156,255,.12)}
+        .ecc-actions{display:flex;gap:9px;margin-top:13px}.ecc-button{height:40px;border:0;border-radius:9px;padding:0 17px;cursor:pointer;font-weight:900;letter-spacing:.03em}.ecc-button.primary{background:linear-gradient(135deg,#157de8,#26b5ff);color:#fff;box-shadow:0 10px 24px rgba(30,139,255,.2)}.ecc-button.secondary{background:#0d2a36;color:#a9d9e8;border:1px solid rgba(116,211,232,.15)}.ecc-button.danger{background:rgba(240,82,112,.12);color:#ff8ea5;border:1px solid rgba(240,82,112,.25)}
+        .ecc-switches{display:grid;gap:8px;margin-top:12px}.ecc-switch{min-height:42px;display:flex;align-items:center;gap:11px;padding:9px 11px;border:1px solid rgba(122,207,228,.09);border-radius:9px;background:rgba(4,20,29,.56)}.ecc-switch input{appearance:none;width:36px;height:20px;border-radius:999px;background:#203c48;position:relative;cursor:pointer;flex:0 0 auto}.ecc-switch input:after{content:"";position:absolute;width:14px;height:14px;left:3px;top:3px;border-radius:50%;background:#8ba3ad;transition:.18s}.ecc-switch input:checked{background:#167fec}.ecc-switch input:checked:after{left:19px;background:#fff}.ecc-switch strong{font-size:11px}.ecc-switch small{display:block;color:#627e8d;font-size:9px;margin-top:2px}
+        .ecc-mode-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.ecc-mode{padding:12px;border-radius:10px;background:#071e29;border:1px solid rgba(118,210,230,.12)}.ecc-mode b{display:block;font-size:11px}.ecc-mode span{font-size:9px;color:#668291;line-height:1.35}.ecc-kbd{display:inline-grid;place-items:center;min-width:30px;height:25px;padding:0 7px;border-radius:6px;background:#102d3a;border:1px solid rgba(139,221,239,.17);color:#aeeaff;font:800 10px Consolas,monospace}
+        .ecc-bottom{display:flex;align-items:center;justify-content:center;gap:18px;border-top:1px solid rgba(255,255,255,.07);background:#06151e}.ecc-bottom button{display:grid;place-items:center;gap:3px;min-width:74px;font-size:9px}.ecc-bottom i{font-size:18px}.ecc-bottom button.active{color:#45b4ff}.ecc-status{margin-left:auto;margin-right:22px;display:grid;gap:3px;text-align:right;color:#6e8997;font-size:9px}.ecc-status span:first-child{color:#8ad9f2}
+        @media(max-width:700px){#endymion-control-center{height:min(650px,calc(100vh - 18px))}.ecc-top{padding:0 12px}.ecc-top button{padding:0 8px;font-size:10px}.ecc-brand small{display:none}.ecc-content{padding:14px}.ecc-hero{grid-template-columns:1fr;height:auto}.ecc-grid{grid-template-columns:1fr}.ecc-field.full{grid-column:auto}.ecc-mode-cards{grid-template-columns:1fr}.ecc-status{display:none}}
+      `;
+      document.head.appendChild(style);
+    };
+    const install = () => {
+      if (state.root || !document.body) return;
+      installStyle();
+      const host = one("#menu-overlay") || document.body;
+      document.body.classList.add("endymion-control-center-active");
+      const root = document.createElement("section");
+      root.id = "endymion-control-center";
+      root.innerHTML = `
+        <header class="ecc-top">
+          <div class="ecc-brand"><div class="ecc-logo">E</div><div><strong>ENDYMION</strong><small>TACTICAL MULTIBOX CLIENT</small></div></div>
+          <button type="button" data-ecc-tab="play" class="active">Quick Play</button>
+          <button type="button" data-ecc-tab="team">Team</button>
+          <button type="button" data-ecc-tab="settings">Settings</button>
+          <button type="button" data-ecc-tab="controls">Controls</button>
+          <span class="ecc-live" data-ecc-live>READY</span>
+        </header>
+        <main class="ecc-content">
+          <section class="ecc-panel" data-ecc-panel="play">
+            <div class="ecc-hero">
+              <div class="ecc-card">
+                <h2>Enter the arena</h2><p class="ecc-muted">Two playable profiles, one verified hot standby and your tag team tools in one clean control center.</p>
+                <div class="ecc-grid">
+                  <div class="ecc-field full"><label>Server</label><select data-ecc-field="server"></select></div>
+                  <div class="ecc-field full"><label>Team tag</label><input data-ecc-field="tag" maxlength="32" placeholder="Shared teammate tag"></div>
+                  <div class="ecc-field"><label>Nickname 1</label><input data-ecc-field="nick1" maxlength="30"></div>
+                  <div class="ecc-field"><label>Nickname 2</label><input data-ecc-field="nick2" maxlength="30"></div>
+                  <div class="ecc-field"><label>3rb skin 1</label><input data-ecc-field="arb1"></div>
+                  <div class="ecc-field"><label>3rb skin 2</label><input data-ecc-field="arb2"></div>
+                  <div class="ecc-field"><label>Skin URL 1</label><input data-ecc-field="skin1"></div>
+                  <div class="ecc-field"><label>Skin URL 2</label><input data-ecc-field="skin2"></div>
+                </div>
+                <div class="ecc-actions"><button class="ecc-button primary" data-ecc-action="play">PLAY</button><button class="ecc-button secondary" data-ecc-action="spectate">SPECTATE</button></div>
+              </div>
+              <div class="ecc-card">
+                <h3>Session readiness</h3><p class="ecc-muted">Standby 3 can remain idle or track the server-selected #1 while still yielding instantly for promotion.</p>
+                <div class="ecc-switches">
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="autoRespawn"><span><strong>Automatic standby promotion</strong><small>Promote WS3 when a playable cell dies or disconnects.</small></span></label>
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="continueMovement"><span><strong>Continue inactive movement</strong><small>Keep the inactive cell moving toward its remembered direction.</small></span></label>
+                </div>
+                <div class="ecc-actions"><button class="ecc-button secondary" data-ecc-action="recycle">RECYCLE ACTIVE (K)</button></div>
+              </div>
+            </div>
+          </section>
+          <section class="ecc-panel" data-ecc-panel="team" hidden>
+            <div class="ecc-grid">
+              <div class="ecc-card">
+                <h3>Team Vision</h3><p class="ecc-muted">The master switch shuts down collection, sending, receiving, remote storage and Team Union rendering. Native tag-player positions stay available.</p>
+                <div class="ecc-switches">
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="teamVision"><span><strong>Enable Team Vision completely</strong><small>Full Team Union, remote enemy plotting and data transport.</small></span></label>
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="nativeRelay"><span><strong>Built-in tag relay</strong><small>Use the existing tag channel when no external relay is connected.</small></span></label>
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="teamMinimap"><span><strong>Remote enemies on minimap</strong><small>Plot fresh enemy positions and approximate size.</small></span></label>
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="shareObjects"><span><strong>Share viruses and ejected mass</strong><small>Off keeps traffic focused on player cells.</small></span></label>
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="teamOverlay"><span><strong>Lightweight game radar markers</strong><small>No full-size ghost circles.</small></span></label>
+                </div>
+              </div>
+              <div class="ecc-card">
+                <h3>WS3 role</h3><p class="ecc-muted">#1 tracking uses normal spectator coordinates. Observer mode also shares fresh nearby cells but never free-scans the arena.</p>
+                <div class="ecc-grid one">
+                  <div class="ecc-field"><label>Standby mode</label><select data-ecc-field="ws3Mode"><option value="standby">Hot standby only</option><option value="tracker">#1 tracker + standby</option><option value="observer">#1 observer + standby</option></select></div>
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="no1Marker"><span><strong>Continuous #1 minimap marker</strong><small>Pulsing #1 marker with current map sector.</small></span></label>
+                  <label class="ecc-switch"><input type="checkbox" data-ecc-check="shareWs3"><span><strong>Feed observer cells into Team Vision</strong><small>Only active in #1 observer mode.</small></span></label>
+                  <div class="ecc-field"><label>External relay URL</label><input data-ecc-field="relay" placeholder="Optional wss://.../ws"></div>
+                  <div class="ecc-field"><label>Private team secret</label><input type="password" data-ecc-field="secret" maxlength="96"></div>
+                </div>
+                <div class="ecc-actions"><button class="ecc-button primary" data-ecc-action="saveTeam">SAVE TEAM</button><button class="ecc-button secondary" data-ecc-action="map">OPEN MAP (F8)</button><button class="ecc-button secondary" data-ecc-action="reattach">REATTACH WS3 (F7)</button></div>
+              </div>
+            </div>
+          </section>
+          <section class="ecc-panel" data-ecc-panel="settings" hidden>
+            <div class="ecc-grid">
+              <div class="ecc-card"><h3>Gameplay</h3><div class="ecc-switches">
+                <label class="ecc-switch"><input type="checkbox" data-ecc-check="autoRespawn"><span><strong>Auto respawn</strong><small>Automatic WS3 promotion and reconnect spawn.</small></span></label>
+                <label class="ecc-switch"><input type="checkbox" data-ecc-check="continueMovement"><span><strong>Continue movement</strong><small>Persistent inactive-cell movement.</small></span></label>
+                <label class="ecc-switch"><input type="checkbox" data-ecc-check="autoZoom"><span><strong>Auto zoom</strong></span></label>
+                <label class="ecc-switch"><input type="checkbox" data-ecc-check="cellNick"><span><strong>Cell nicknames</strong></span></label>
+              </div></div>
+              <div class="ecc-card"><h3>Rendering</h3><div class="ecc-grid one">
+                <div class="ecc-field"><label>Mass display</label><select data-ecc-field="cellMass"><option value="off">Off</option><option value="shortened">Shortened</option><option value="full">Full</option></select></div>
+                <label class="ecc-switch"><input type="checkbox" data-ecc-check="urlSkins"><span><strong>URL skins</strong></span></label>
+                <label class="ecc-switch"><input type="checkbox" data-ecc-check="arbSkins"><span><strong>3rb skins</strong></span></label>
+                <div class="ecc-field"><label>Food display</label><select data-ecc-field="foodMode"><option value="off">Off</option><option value="monoColored">Mono color</option><option value="rainbow">Rainbow</option><option value="snowflakes">Snowflakes</option></select></div>
+              </div><div class="ecc-actions"><button class="ecc-button primary" data-ecc-action="saveSettings">SAVE SETTINGS</button></div></div>
+            </div>
+          </section>
+          <section class="ecc-panel" data-ecc-panel="controls" hidden>
+            <div class="ecc-card"><h2>Controls</h2><p class="ecc-muted">Only Endymion controls used by this build are shown.</p>
+              <div class="ecc-mode-cards"><div class="ecc-mode"><b><span class="ecc-kbd">TAB</span> Switch cell</b><span>Swap active playable session.</span></div><div class="ecc-mode"><b><span class="ecc-kbd">K</span> Recycle</b><span>Promote ready WS3 into the active tab.</span></div><div class="ecc-mode"><b><span class="ecc-kbd">F8</span> Team map</b><span>Open or close Full Team Union.</span></div><div class="ecc-mode"><b><span class="ecc-kbd">F7</span> Reattach WS3</b><span>Restart the tracker/observer role without reconnecting the game session.</span></div><div class="ecc-mode"><b><span class="ecc-kbd">F9</span> Team Vision</b><span>Completely enable or disable Team Vision processing and transport.</span></div><div class="ecc-mode"><b><span class="ecc-kbd">SPACE</span> Split</b><span>Native split action.</span></div><div class="ecc-mode"><b><span class="ecc-kbd">W</span> Feed</b><span>Native feed action.</span></div></div>
+            </div>
+          </section>
+        </main>
+        <footer class="ecc-bottom">
+          <button class="active" data-ecc-tab="play"><i class="fa fa-play"></i><span>PLAY</span></button>
+          <button data-ecc-tab="team"><i class="fa fa-users"></i><span>TEAM</span></button>
+          <button data-ecc-tab="settings"><i class="fa fa-sliders"></i><span>SETTINGS</span></button>
+          <button data-ecc-tab="controls"><i class="fa fa-keyboard"></i><span>CONTROLS</span></button>
+          <div class="ecc-status" data-ecc-status><span>READY</span><span>WS3 waiting</span></div>
+        </footer>`;
+      host.appendChild(root);
+      state.root = root;
+      root.addEventListener("click", event => {
+        const tabButton = event.target.closest("[data-ecc-tab]");
+        if (tabButton) { switchTab(tabButton.dataset.eccTab); return; }
+        const button = event.target.closest("[data-ecc-action]");
+        if (!button) return;
+        const action = button.dataset.eccAction;
+        if (action === "play") { applyProfiles(); one("#button-play")?.click(); }
+        if (action === "spectate") { applyProfiles(); one("#button-spectate")?.click(); }
+        if (action === "recycle") window.DARK_ENDYMION?.recycleActiveCell?.();
+        if (action === "saveTeam") saveTeam();
+        if (action === "saveSettings") saveSettings();
+        if (action === "map") window.ENDYMION_V3?.toggleMap?.();
+        if (action === "reattach") window.ENDYMION_WS3_HELPER?.reattach?.();
+      });
+      root.querySelector('[data-ecc-field="server"]')?.addEventListener("change", applyProfiles);
+      root.addEventListener("change", event => {
+        const toggle = event.target.closest?.("[data-ecc-check]");
+        if (toggle) {
+          const name = toggle.dataset.eccCheck;
+          all(`#endymion-control-center [data-ecc-check="${name}"]`).forEach(input => {
+            if (input !== toggle) input.checked = toggle.checked;
+          });
+          if (["autoRespawn", "continueMovement", "autoZoom", "cellNick", "urlSkins", "arbSkins"].includes(name)) saveSettings();
+          if (["teamVision", "nativeRelay", "shareObjects", "teamMinimap", "teamOverlay", "no1Marker", "shareWs3"].includes(name)) saveTeam();
+          return;
+        }
+        const field = event.target.closest?.("[data-ecc-field]");
+        if (!field) return;
+        const name = field.dataset.eccField;
+        if (["ws3Mode", "relay", "secret"].includes(name)) saveTeam();
+        if (["cellMass", "foodMode"].includes(name)) saveSettings();
+      });
+      switchTab("play");
+      syncProfilesFromOriginal();
+      updateStatus(true);
+      state.timer = setInterval(() => updateStatus(false), 700);
+    };
+    const init = () => {
+      if (state.initialized) return;
+      state.initialized = true;
+      install();
+      if (!state.root) setTimeout(install, 250);
+    };
+    const previousCoreInit = _0xb45f1b.init;
+    _0xb45f1b.init = function endymionControlCenterInit() {
+      const result = previousCoreInit.apply(this, arguments);
+      init();
+      return result;
+    };
+    window.ENDYMION_CONTROL_CENTER = { state, init, switchTab, update: () => updateStatus(true) };
+  })();
+
+
   _0x1c478d.onload = () => (
     _0x14f7b2("#loading-screen").html(
-      '<div class="ls-title">Endymion</div><div class="ls-spinner"><span id="ls-icon"><i class="fa fa-solid fa-circle-notch fa-spin"></i></span><span style="display:block;" id="ls-message">Loading...</span></div>',
+      '<div class="endymion-loader"><div class="endymion-loader-orbit"><span class="endymion-orbit orbit-a"></span><span class="endymion-orbit orbit-b"></span><span class="endymion-loader-core">E</span></div><div class="endymion-loader-brand">ENDYMION</div><div class="endymion-loader-sub">TACTICAL MULTIBOX CORE</div><div class="endymion-loader-progress"><span></span></div><span id="ls-icon" aria-hidden="true"></span><span id="ls-message">Initializing secure game sessions…</span></div>',
     ),
     49 > _0xb45f1b.browserVersion()
       ? (_0x14f7b2("#ls-icon").html('<i class="fa fa-chrome" aria-hidden="true"></i>'),
